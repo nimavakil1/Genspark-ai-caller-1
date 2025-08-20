@@ -1,0 +1,11 @@
+name,phone,business_name,business_type,email,address,estimated_monthly_usage,current_supplier,best_contact_time,notes
+John Smith,+1-555-0101,Smith's Corner Store,retail,john@smithsstore.com,"123 Main St, Anytown, ST 12345",25,Office Depot,morning,Owner mentioned they go through rolls quickly
+Maria Garcia,+1-555-0102,Garcia Family Restaurant,restaurant,maria@garciasrestaurant.com,"456 Oak Ave, Foodtown, ST 12346",50,Restaurant Supply Co,afternoon,High volume restaurant - quality is important
+David Chen,+1-555-0103,Chen's Electronics,retail,david@chenselectronics.com,"789 Tech Blvd, Gadgetville, ST 12347",15,Unknown,evening,Small electronics store - price-sensitive
+Sarah Johnson,+1-555-0104,Quick Mart Gas & Go,convenience,sarah@quickmart.com,"321 Highway 1, Speedtown, ST 12348",40,Regional Paper Supply,morning,24/7 operation - needs reliable supply
+Mike Wilson,+1-555-0105,Wilson's Auto Repair,service,mike@wilsonrepair.com,"654 Service Dr, Fixittown, ST 12349",10,Auto Parts Plus,afternoon,Auto shop - lower volume but steady
+Lisa Brown,+1-555-0106,Brown's Bakery,restaurant,lisa@brownsbakery.com,"987 Sweet Ave, Baketown, ST 12350",30,Food Service Direct,morning,Artisan bakery - quality focused
+Tom Davis,+1-555-0107,Davis Hardware,retail,tom@davishardware.com,"246 Tool St, Hammer City, ST 12351",20,Hardware Wholesale,afternoon,Family hardware store - 3rd generation
+Anna Rodriguez,+1-555-0108,Rodriguez Pharmacy,retail,anna@rodriguezrx.com,"135 Health Blvd, Wellness, ST 12352",35,Medical Supply Co,morning,Independent pharmacy - high volume
+James Lee,+1-555-0109,Lee's Laundromat,service,james@leeslaundry.com,"579 Clean St, Washtown, ST 12353",15,Coin-Op Supply,evening,24-hour laundromat - steady usage
+Kelly White,+1-555-0110,White's Pet Store,retail,kelly@whitespets.com,"864 Pet Lane, Animalville, ST 12354",25,Pet Supply Direct,afternoon,Specialty pet store - growing business

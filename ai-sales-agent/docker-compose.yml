@@ -1,0 +1,103 @@
+# AI Sales Agent - Complete Docker Compose Setup
+# This integrates with your existing LiveKit + Redis setup
+
+version: '3.8'
+
+services:
+  # Redis (shared with LiveKit)
+  redis:
+    image: redis:7-alpine
+    container_name: sales-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # LiveKit Server
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: sales-livekit
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    volumes:
+      - ./livekit.yaml:/livekit.yaml
+    environment:
+      - LIVEKIT_CONFIG_FILE=/livekit.yaml
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7880"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # AI Sales Agent
+  ai-sales-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sales-ai-agent
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config
+    environment:
+      # OpenAI Configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      
+      # LiveKit Configuration
+      - LIVEKIT_URL=ws://livekit:7880
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      
+      # Telnyx Configuration
+      - TELNYX_API_KEY=${TELNYX_API_KEY}
+      - TELNYX_SIP_USERNAME=nimavakil
+      - TELNYX_SIP_PASSWORD=Acr0paq!
+      - TELNYX_PHONE_NUMBER=+3226010500
+      
+      # Redis Configuration
+      - REDIS_URL=redis://redis:6379
+      
+      # Application Configuration
+      - DATABASE_PATH=/app/data/customers.db
+      - WEB_HOST=0.0.0.0
+      - WEB_PORT=8000
+      - DEBUG_MODE=false
+      
+      # Business Configuration
+      - COMPANY_NAME=Premium Paper Solutions
+      - AGENT_NAME=Sarah
+      - COMPANY_PHONE=+1-800-RECEIPT
+      - COMPANY_EMAIL=sales@premiumpaper.com
+    
+    depends_on:
+      livekit:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  redis_data:
+
+networks:
+  default:
+    name: sales-network

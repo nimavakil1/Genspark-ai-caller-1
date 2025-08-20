@@ -1,0 +1,23 @@
+# AI Sales Agent Dependencies
+livekit>=1.0.0
+livekit-agents>=1.0.0
+livekit-plugins-openai>=1.0.0
+livekit-plugins-elevenlabs>=1.0.0
+openai>=1.3.0
+fastapi==0.104.1
+uvicorn==0.24.0
+redis==5.0.1
+python-dotenv==1.0.0
+pydantic==2.5.0
+requests==2.31.0
+asyncio-mqtt==0.16.1
+
+# For Telnyx SIP integration
+telnyx==2.0.0
+
+# For data management
+pandas==2.1.3
+sqlalchemy==2.0.23
+
+# For logging and monitoring
+structlog==23.2.0

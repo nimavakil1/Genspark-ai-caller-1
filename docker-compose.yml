@@ -3,57 +3,38 @@ version: '3.8'
 services:
   redis:
     image: redis:7-alpine
+    container_name: ai-sales-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    command: redis-server --appendonly yes
+    restart: unless-stopped
 
   livekit:
     image: livekit/livekit-server:latest
+    container_name: ai-sales-livekit
     ports:
       - "7880:7880"
-      - "7881:7881"
-      - "7882:7882/udp"
+      - "7881:7881/udp"
     environment:
+      - LIVEKIT_KEYS=API_KEY: your_livekit_api_key, API_SECRET: your_livekit_api_secret
       - LIVEKIT_CONFIG=/etc/livekit.yaml
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7880/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    restart: unless-stopped
 
   ai-agent:
-    build:
-      context: ./ai-agent
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
+    image: livekit/agents:latest
+    container_name: ai-sales-agent
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - REDIS_URL=redis://redis:6379
       - LIVEKIT_URL=ws://livekit:7880
-      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
-      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - LIVEKIT_API_KEY=your_livekit_api_key
+      - LIVEKIT_API_SECRET=your_livekit_api_secret
     depends_on:
-      redis:
-        condition: service_healthy
-      livekit:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - livekit
+      - redis
+    restart: unless-stopped
 
 volumes:
   redis_data:
