@@ -528,6 +528,15 @@
                             </div>
                         </div>
 
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="opt_out" id="optOut">
+                                <label class="form-check-label" for="optOut">
+                                    <span class="text-danger">Opt Out</span> - Customer cannot be contacted
+                                </label>
+                            </div>
+                        </div>
+
                         <h6 class="mb-3">Invoice Address</h6>
                         <div class="row">
                             <div class="col-md-8">
@@ -876,6 +885,7 @@
                                 <th>Contact</th>
                                 <th>Phone</th>
                                 <th>Receipt Rolls</th>
+                                <th>Opt Out</th>
                                 <th>City</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -899,6 +909,11 @@
                                     <td>
                                         <span class="badge ${customer.uses_receipt_rolls ? 'bg-success' : 'bg-secondary'}">
                                             ${customer.uses_receipt_rolls ? 'Yes' : 'No'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge ${customer.opt_out ? 'bg-danger' : 'bg-success'}">
+                                            ${customer.opt_out ? 'Yes' : 'No'}
                                         </span>
                                     </td>
                                     <td>${customer.invoice_address_city || '-'}</td>
@@ -971,6 +986,7 @@
                     mobile: formData.get('mobile'),
                     vat_number: formData.get('vat_number'),
                     uses_receipt_rolls: formData.has('uses_receipt_rolls'),
+                    opt_out: formData.has('opt_out'),
                     invoice_address_street: formData.get('invoice_address_street'),
                     invoice_address_number: formData.get('invoice_address_number'),
                     invoice_address_city: formData.get('invoice_address_city'),
