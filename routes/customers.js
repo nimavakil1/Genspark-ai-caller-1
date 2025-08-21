@@ -500,4 +500,186 @@ router.get('/export/csv', asyncHandler(async (req, res) => {
   });
 }));
 
-module.exports = router;// Ensure PUT route is available for customer updates
+// ==================== DELIVERY ADDRESS MANAGEMENT ====================
+
+// Get all delivery addresses for a customer
+router.get('/:customerId/delivery-addresses', asyncHandler(async (req, res) => {
+  const { customerId } = req.params;
+
+  const result = await query(
+    `SELECT da.*, c.company_name
+    FROM delivery_addresses da
+    LEFT JOIN customers c ON da.customer_id = c.id
+    WHERE da.customer_id = $1 AND da.is_active = true
+    ORDER BY da.is_primary DESC, da.address_name ASC`,
+    [customerId]
+  );
+
+  res.json({
+    success: true,
+    data: result.rows
+  });
+}));
+
+// Add new delivery address for a customer
+router.post('/:customerId/delivery-addresses', asyncHandler(async (req, res) => {
+  const { customerId } = req.params;
+  const {
+    address_name,
+    street,
+    number,
+    city,
+    postal_code,
+    country = 'Belgium',
+    is_primary = false,
+    can_place_orders = false,
+    contact_person,
+    contact_phone,
+    contact_email,
+    notes
+  } = req.body;
+
+  // Validation
+  if (!address_name) {
+    return res.status(400).json({
+      success: false,
+      error: 'Address name is required'
+    });
+  }
+
+  // If setting as primary, remove primary flag from other addresses
+  if (is_primary) {
+    await query(
+      'UPDATE delivery_addresses SET is_primary = false WHERE customer_id = $1',
+      [customerId]
+    );
+  }
+
+  const result = await query(
+    `INSERT INTO delivery_addresses (
+      customer_id, address_name, street, number, city, postal_code, country,
+      is_primary, can_place_orders, contact_person, contact_phone, contact_email, notes
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    RETURNING *`,
+    [
+      customerId, address_name, street, number, city, postal_code, country,
+      is_primary, can_place_orders, contact_person, contact_phone, contact_email, notes
+    ]
+  );
+
+  res.status(201).json({
+    success: true,
+    message: 'Delivery address created successfully',
+    data: result.rows[0]
+  });
+}));
+
+// Update delivery address
+router.put('/delivery-addresses/:addressId', asyncHandler(async (req, res) => {
+  const { addressId } = req.params;
+  const {
+    address_name,
+    street,
+    number,
+    city,
+    postal_code,
+    country,
+    is_primary,
+    can_place_orders,
+    contact_person,
+    contact_phone,
+    contact_email,
+    notes,
+    is_active
+  } = req.body;
+
+  // If setting as primary, remove primary flag from other addresses for the same customer
+  if (is_primary) {
+    await query(
+      `UPDATE delivery_addresses SET is_primary = false 
+       WHERE customer_id = (SELECT customer_id FROM delivery_addresses WHERE id = $1)`,
+      [addressId]
+    );
+  }
+
+  const result = await query(
+    `UPDATE delivery_addresses SET
+      address_name = COALESCE($1, address_name),
+      street = COALESCE($2, street),
+      number = COALESCE($3, number),
+      city = COALESCE($4, city),
+      postal_code = COALESCE($5, postal_code),
+      country = COALESCE($6, country),
+      is_primary = COALESCE($7, is_primary),
+      can_place_orders = COALESCE($8, can_place_orders),
+      contact_person = COALESCE($9, contact_person),
+      contact_phone = COALESCE($10, contact_phone),
+      contact_email = COALESCE($11, contact_email),
+      notes = COALESCE($12, notes),
+      is_active = COALESCE($13, is_active),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $14
+    RETURNING *`,
+    [
+      address_name, street, number, city, postal_code, country,
+      is_primary, can_place_orders, contact_person, contact_phone, contact_email, notes, is_active,
+      addressId
+    ]
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({
+      success: false,
+      error: 'Delivery address not found'
+    });
+  }
+
+  res.json({
+    success: true,
+    message: 'Delivery address updated successfully',
+    data: result.rows[0]
+  });
+}));
+
+// Delete delivery address (soft delete)
+router.delete('/delivery-addresses/:addressId', asyncHandler(async (req, res) => {
+  const { addressId } = req.params;
+
+  // Check if this is the primary address
+  const addressResult = await query(
+    'SELECT is_primary, customer_id FROM delivery_addresses WHERE id = $1',
+    [addressId]
+  );
+
+  if (addressResult.rows.length === 0) {
+    return res.status(404).json({
+      success: false,
+      error: 'Delivery address not found'
+    });
+  }
+
+  const address = addressResult.rows[0];
+
+  // Soft delete the address
+  await query(
+    'UPDATE delivery_addresses SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+    [addressId]
+  );
+
+  // If this was the primary address, set another address as primary
+  if (address.is_primary) {
+    await query(
+      `UPDATE delivery_addresses SET is_primary = true 
+       WHERE customer_id = $1 AND is_active = true AND id != $2
+       ORDER BY created_at ASC LIMIT 1`,
+      [address.customer_id, addressId]
+    );
+  }
+
+  res.json({
+    success: true,
+    message: 'Delivery address deleted successfully'
+  });
+}));
+
+module.exports = router;

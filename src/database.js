@@ -104,13 +104,21 @@ const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS delivery_addresses (
         id SERIAL PRIMARY KEY,
         customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+        address_name VARCHAR(100) NOT NULL,
         street VARCHAR(255),
         number VARCHAR(20),
         city VARCHAR(100),
         postal_code VARCHAR(20),
         country VARCHAR(100) DEFAULT 'Belgium',
         is_primary BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        can_place_orders BOOLEAN DEFAULT false,
+        contact_person VARCHAR(100),
+        contact_phone VARCHAR(20),
+        contact_email VARCHAR(100),
+        notes TEXT,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 

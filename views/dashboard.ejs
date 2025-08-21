@@ -1412,6 +1412,142 @@
         </div>
     </div>
 
+    <!-- Delivery Addresses Modal -->
+    <div class="modal fade" id="deliveryAddressesModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delivery Addresses</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 id="deliveryCustomerName" class="mb-0"></h6>
+                            <small class="text-muted">Manage delivery addresses for this customer</small>
+                        </div>
+                        <button class="btn btn-success" onclick="showAddDeliveryAddressForm()">
+                            <i class="fas fa-plus me-2"></i>Add Address
+                        </button>
+                    </div>
+                    
+                    <div id="deliveryAddressesList">
+                        <!-- Delivery addresses will be loaded here -->
+                    </div>
+                    
+                    <!-- Add/Edit Delivery Address Form -->
+                    <div id="deliveryAddressForm" style="display: none;">
+                        <hr>
+                        <h6 id="deliveryFormTitle">Add New Delivery Address</h6>
+                        <form id="deliveryAddressFormData">
+                            <input type="hidden" id="deliveryAddressId" name="address_id">
+                            <input type="hidden" id="deliveryCustomerId" name="customer_id">
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Address Name *</label>
+                                        <input type="text" class="form-control" id="deliveryAddressName" name="address_name" required>
+                                        <small class="form-text text-muted">e.g., "Main Warehouse", "Store Branch 1"</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Contact Person</label>
+                                        <input type="text" class="form-control" id="deliveryContactPerson" name="contact_person">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label class="form-label">Street</label>
+                                        <input type="text" class="form-control" id="deliveryStreet" name="street">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">Number</label>
+                                        <input type="text" class="form-control" id="deliveryNumber" name="number">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">City</label>
+                                        <input type="text" class="form-control" id="deliveryCity" name="city">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label">Postal Code</label>
+                                        <input type="text" class="form-control" id="deliveryPostalCode" name="postal_code">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label">Country</label>
+                                        <input type="text" class="form-control" id="deliveryCountry" name="country" value="Belgium">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Contact Phone</label>
+                                        <input type="tel" class="form-control" id="deliveryContactPhone" name="contact_phone">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Contact Email</label>
+                                        <input type="email" class="form-control" id="deliveryContactEmail" name="contact_email">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Notes</label>
+                                <textarea class="form-control" id="deliveryNotes" name="notes" rows="2"></textarea>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="deliveryIsPrimary" name="is_primary">
+                                        <label class="form-check-label" for="deliveryIsPrimary">
+                                            Primary Delivery Address
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="deliveryCanPlaceOrders" name="can_place_orders">
+                                        <label class="form-check-label" for="deliveryCanPlaceOrders">
+                                            <strong>Can Place Orders Independently</strong>
+                                        </label>
+                                        <small class="form-text text-muted d-block">If unchecked, orders must be placed centrally by main contact</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-end gap-2">
+                                <button type="button" class="btn btn-secondary" onclick="hideDeliveryAddressForm()">Cancel</button>
+                                <button type="button" class="btn btn-success" onclick="saveDeliveryAddress()">
+                                    <i class="fas fa-save me-2"></i>Save Address
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Global variables
@@ -1677,6 +1813,9 @@
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-info" onclick="manageDeliveryAddresses(${customer.id}, '${customer.company_name}')" title="Delivery Addresses">
+                                                <i class="fas fa-map-marker-alt"></i>
+                                            </button>
                                             <button class="btn btn-outline-primary" onclick="editCustomer(${customer.id})" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </button>
@@ -1953,6 +2092,237 @@
             } catch (error) {
                 console.error('Error deleting customer:', error);
                 showAlert('Failed to delete customer', 'danger');
+            }
+        }
+
+        // ==================== DELIVERY ADDRESS MANAGEMENT ====================
+
+        // Manage delivery addresses for a customer
+        async function manageDeliveryAddresses(customerId, customerName) {
+            try {
+                document.getElementById('deliveryCustomerName').textContent = customerName;
+                document.getElementById('deliveryCustomerId').value = customerId;
+                
+                // Load delivery addresses
+                await loadDeliveryAddresses(customerId);
+                
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('deliveryAddressesModal'));
+                modal.show();
+                
+            } catch (error) {
+                console.error('Error loading delivery addresses:', error);
+                showAlert('Failed to load delivery addresses', 'danger');
+            }
+        }
+
+        // Load delivery addresses for a customer
+        async function loadDeliveryAddresses(customerId) {
+            try {
+                const response = await fetch(`/api/customers/${customerId}/delivery-addresses`, {
+                    headers: getAuthHeader()
+                });
+
+                if (!response.ok) throw new Error('Failed to load delivery addresses');
+
+                const result = await response.json();
+                const addresses = result.data;
+
+                const container = document.getElementById('deliveryAddressesList');
+                
+                if (addresses.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-map-marker-alt fa-3x mb-3"></i>
+                            <p>No delivery addresses found for this customer.</p>
+                            <p>Click "Add Address" to create the first delivery address.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const addressesHtml = addresses.map(address => `
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="card-title mb-1">
+                                        ${address.address_name}
+                                        ${address.is_primary ? '<span class="badge bg-primary ms-2">Primary</span>' : ''}
+                                        ${address.can_place_orders ? '<span class="badge bg-success ms-2">Can Order</span>' : '<span class="badge bg-secondary ms-2">Centralized Orders</span>'}
+                                    </h6>
+                                    <p class="card-text mb-2">
+                                        <i class="fas fa-map-marker-alt me-2"></i>
+                                        ${address.street} ${address.number}, ${address.city} ${address.postal_code}, ${address.country}
+                                    </p>
+                                    ${address.contact_person ? `<p class="card-text mb-1"><i class="fas fa-user me-2"></i>${address.contact_person}</p>` : ''}
+                                    ${address.contact_phone ? `<p class="card-text mb-1"><i class="fas fa-phone me-2"></i>${address.contact_phone}</p>` : ''}
+                                    ${address.contact_email ? `<p class="card-text mb-1"><i class="fas fa-envelope me-2"></i>${address.contact_email}</p>` : ''}
+                                    ${address.notes ? `<p class="card-text mb-0 text-muted"><small>${address.notes}</small></p>` : ''}
+                                </div>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" onclick="editDeliveryAddress(${address.id})" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="deleteDeliveryAddress(${address.id})" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                container.innerHTML = addressesHtml;
+
+            } catch (error) {
+                console.error('Error loading delivery addresses:', error);
+                showAlert('Failed to load delivery addresses', 'danger');
+            }
+        }
+
+        // Show add delivery address form
+        function showAddDeliveryAddressForm() {
+            document.getElementById('deliveryFormTitle').textContent = 'Add New Delivery Address';
+            document.getElementById('deliveryAddressFormData').reset();
+            document.getElementById('deliveryAddressId').value = '';
+            document.getElementById('deliveryAddressForm').style.display = 'block';
+            document.getElementById('deliveryAddressName').focus();
+        }
+
+        // Hide delivery address form
+        function hideDeliveryAddressForm() {
+            document.getElementById('deliveryAddressForm').style.display = 'none';
+        }
+
+        // Edit delivery address
+        async function editDeliveryAddress(addressId) {
+            try {
+                // Find the address in the loaded data (we could also make an API call)
+                const customerId = document.getElementById('deliveryCustomerId').value;
+                const response = await fetch(`/api/customers/${customerId}/delivery-addresses`, {
+                    headers: getAuthHeader()
+                });
+
+                if (!response.ok) throw new Error('Failed to load delivery address');
+
+                const result = await response.json();
+                const address = result.data.find(addr => addr.id === addressId);
+
+                if (!address) {
+                    showAlert('Delivery address not found', 'danger');
+                    return;
+                }
+
+                // Populate form
+                document.getElementById('deliveryFormTitle').textContent = 'Edit Delivery Address';
+                document.getElementById('deliveryAddressId').value = address.id;
+                document.getElementById('deliveryAddressName').value = address.address_name || '';
+                document.getElementById('deliveryContactPerson').value = address.contact_person || '';
+                document.getElementById('deliveryStreet').value = address.street || '';
+                document.getElementById('deliveryNumber').value = address.number || '';
+                document.getElementById('deliveryCity').value = address.city || '';
+                document.getElementById('deliveryPostalCode').value = address.postal_code || '';
+                document.getElementById('deliveryCountry').value = address.country || '';
+                document.getElementById('deliveryContactPhone').value = address.contact_phone || '';
+                document.getElementById('deliveryContactEmail').value = address.contact_email || '';
+                document.getElementById('deliveryNotes').value = address.notes || '';
+                document.getElementById('deliveryIsPrimary').checked = address.is_primary || false;
+                document.getElementById('deliveryCanPlaceOrders').checked = address.can_place_orders || false;
+
+                // Show form
+                document.getElementById('deliveryAddressForm').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error loading delivery address for edit:', error);
+                showAlert('Failed to load delivery address', 'danger');
+            }
+        }
+
+        // Save delivery address
+        async function saveDeliveryAddress() {
+            try {
+                const form = document.getElementById('deliveryAddressFormData');
+                const formData = new FormData(form);
+                const customerId = document.getElementById('deliveryCustomerId').value;
+                const addressId = document.getElementById('deliveryAddressId').value;
+
+                const addressData = {
+                    address_name: formData.get('address_name'),
+                    contact_person: formData.get('contact_person'),
+                    street: formData.get('street'),
+                    number: formData.get('number'),
+                    city: formData.get('city'),
+                    postal_code: formData.get('postal_code'),
+                    country: formData.get('country'),
+                    contact_phone: formData.get('contact_phone'),
+                    contact_email: formData.get('contact_email'),
+                    notes: formData.get('notes'),
+                    is_primary: formData.has('is_primary'),
+                    can_place_orders: formData.has('can_place_orders')
+                };
+
+                let url, method;
+                if (addressId) {
+                    // Update existing address
+                    url = `/api/customers/delivery-addresses/${addressId}`;
+                    method = 'PUT';
+                } else {
+                    // Create new address
+                    url = `/api/customers/${customerId}/delivery-addresses`;
+                    method = 'POST';
+                }
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...getAuthHeader()
+                    },
+                    body: JSON.stringify(addressData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert(addressId ? 'Delivery address updated successfully' : 'Delivery address created successfully', 'success');
+                    hideDeliveryAddressForm();
+                    await loadDeliveryAddresses(customerId);
+                } else {
+                    showAlert(result.error || 'Failed to save delivery address', 'danger');
+                }
+
+            } catch (error) {
+                console.error('Error saving delivery address:', error);
+                showAlert('Failed to save delivery address', 'danger');
+            }
+        }
+
+        // Delete delivery address
+        async function deleteDeliveryAddress(addressId) {
+            if (!confirm('Are you sure you want to delete this delivery address?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/customers/delivery-addresses/${addressId}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeader()
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Delivery address deleted successfully', 'success');
+                    const customerId = document.getElementById('deliveryCustomerId').value;
+                    await loadDeliveryAddresses(customerId);
+                } else {
+                    showAlert(result.error || 'Failed to delete delivery address', 'danger');
+                }
+
+            } catch (error) {
+                console.error('Error deleting delivery address:', error);
+                showAlert('Failed to delete delivery address', 'danger');
             }
         }
 
