@@ -53,6 +53,73 @@ const transaction = async (callback) => {
   }
 };
 
+// Database migrations function
+const runMigrations = async () => {
+  console.log('🔄 Running database migrations...');
+  
+  try {
+    // Migration 1: Add new columns to delivery_addresses table (if they don't exist)
+    const columnsToAdd = [
+      { name: 'address_name', type: 'VARCHAR(100)', default: "'Address'" },
+      { name: 'can_place_orders', type: 'BOOLEAN', default: 'false' },
+      { name: 'contact_person', type: 'VARCHAR(100)', default: null },
+      { name: 'contact_phone', type: 'VARCHAR(20)', default: null },
+      { name: 'contact_email', type: 'VARCHAR(100)', default: null },
+      { name: 'notes', type: 'TEXT', default: null },
+      { name: 'is_active', type: 'BOOLEAN', default: 'true' },
+      { name: 'updated_at', type: 'TIMESTAMP', default: 'CURRENT_TIMESTAMP' }
+    ];
+
+    for (const column of columnsToAdd) {
+      try {
+        // Check if column exists
+        const columnCheck = await query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'delivery_addresses' 
+          AND column_name = $1
+        `, [column.name]);
+
+        if (columnCheck.rows.length === 0) {
+          // Column doesn't exist, add it
+          const defaultClause = column.default ? ` DEFAULT ${column.default}` : '';
+          await query(`
+            ALTER TABLE delivery_addresses 
+            ADD COLUMN ${column.name} ${column.type}${defaultClause}
+          `);
+          console.log(`✅ Added column: ${column.name}`);
+        }
+      } catch (error) {
+        console.log(`⚠️ Column ${column.name} migration issue:`, error.message);
+      }
+    }
+
+    // Migration 2: Ensure address_name is NOT NULL for existing records
+    try {
+      await query(`
+        UPDATE delivery_addresses 
+        SET address_name = COALESCE(address_name, 'Address ' || id) 
+        WHERE address_name IS NULL OR address_name = ''
+      `);
+
+      // Now make the column NOT NULL
+      await query(`
+        ALTER TABLE delivery_addresses 
+        ALTER COLUMN address_name SET NOT NULL
+      `);
+      console.log('✅ Updated address_name column to NOT NULL');
+    } catch (error) {
+      console.log('⚠️ Address name NOT NULL migration issue:', error.message);
+    }
+
+    console.log('✅ Database migrations completed successfully');
+    
+  } catch (error) {
+    console.error('💥 Migration error:', error);
+    throw error;
+  }
+};
+
 // Database initialization
 const initializeDatabase = async () => {
   try {
@@ -236,6 +303,9 @@ const initializeDatabase = async () => {
     await query('CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id)');
     await query('CREATE INDEX IF NOT EXISTS idx_orders_date ON orders(created_at)');
     await query('CREATE INDEX IF NOT EXISTS idx_delivery_addresses_customer ON delivery_addresses(customer_id)');
+
+    // Run database migrations
+    await runMigrations();
 
     console.log('✅ Database schema initialized successfully');
   } catch (error) {
