@@ -1391,7 +1391,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">CSV File (European format - semicolon separated)</label>
-                        <input type="file" class="form-control" id="csvFile" accept=".csv">
+                        <input type="file" class="form-control" id="customerCsvFile" accept=".csv">
                         <div class="form-text">
                             Download the template to see the required format.
                         </div>
@@ -1571,7 +1571,7 @@
                     <form id="deliveryAddressUploadForm" enctype="multipart/form-data">
                         <div class="mb-3">
                             <label class="form-label">Select CSV File</label>
-                            <input type="file" class="form-control" name="csvFile" accept=".csv" required>
+                            <input type="file" class="form-control" id="deliveryAddressCsvFile" name="csvFile" accept=".csv" required>
                             <small class="form-text text-muted">
                                 File must be in CSV format with semicolon (;) separators
                             </small>
@@ -1994,7 +1994,7 @@
         // Upload CSV
         async function uploadCSV() {
             try {
-                const fileInput = document.getElementById('csvFile');
+                const fileInput = document.getElementById('customerCsvFile');
                 const file = fileInput.files[0];
 
                 if (!file) {
