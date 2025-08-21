@@ -6,7 +6,7 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const router = express.Router();
 
 // Apply authentication to all product routes
-router.use(authenticateToken);
+
 
 // Get all products with pagination and search
 router.get('/', asyncHandler(async (req, res) => {

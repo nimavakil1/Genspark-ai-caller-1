@@ -6,7 +6,7 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const router = express.Router();
 
 // Apply authentication to all call routes
-router.use(authenticateToken);
+
 
 // Get all call logs with pagination and filtering
 router.get('/', asyncHandler(async (req, res) => {

@@ -26,7 +26,7 @@ const upload = multer({
 });
 
 // Apply authentication to all customer routes
-router.use(authenticateToken);
+
 
 // Get all customers with pagination and search
 router.get('/', asyncHandler(async (req, res) => {
