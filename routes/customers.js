@@ -167,6 +167,8 @@ router.post('/', asyncHandler(async (req, res) => {
     invoice_address_city,
     invoice_address_postal_code,
     invoice_address_country = 'Belgium',
+    invoice_language_code = 'FR',
+    invoice_language_confirmed = false,
     delivery_same_as_invoice = true,
     delivery_addresses = [],
     notes,
@@ -188,14 +190,14 @@ router.post('/', asyncHandler(async (req, res) => {
         company_name, contact_person, email, phone, mobile, vat_number,
         uses_receipt_rolls, opt_out, invoice_address_street, invoice_address_number,
         invoice_address_city, invoice_address_postal_code, invoice_address_country,
-        delivery_same_as_invoice, notes, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        invoice_language_code, invoice_language_confirmed, delivery_same_as_invoice, notes, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING *`,
       [
         company_name, contact_person, email, phone, mobile, vat_number,
         uses_receipt_rolls, opt_out, invoice_address_street, invoice_address_number,
         invoice_address_city, invoice_address_postal_code, invoice_address_country,
-        delivery_same_as_invoice, notes, status
+        invoice_language_code, invoice_language_confirmed, delivery_same_as_invoice, notes, status
       ]
     );
 
@@ -244,6 +246,8 @@ router.put('/:id', asyncHandler(async (req, res) => {
     invoice_address_city,
     invoice_address_postal_code,
     invoice_address_country,
+    invoice_language_code,
+    invoice_language_confirmed,
     delivery_same_as_invoice,
     delivery_addresses = [],
     notes,
@@ -267,17 +271,19 @@ router.put('/:id', asyncHandler(async (req, res) => {
         invoice_address_city = COALESCE($11, invoice_address_city),
         invoice_address_postal_code = COALESCE($12, invoice_address_postal_code),
         invoice_address_country = COALESCE($13, invoice_address_country),
-        delivery_same_as_invoice = COALESCE($14, delivery_same_as_invoice),
-        notes = COALESCE($15, notes),
-        status = COALESCE($16, status),
+        invoice_language_code = COALESCE($14, invoice_language_code),
+        invoice_language_confirmed = COALESCE($15, invoice_language_confirmed),
+        delivery_same_as_invoice = COALESCE($16, delivery_same_as_invoice),
+        notes = COALESCE($17, notes),
+        status = COALESCE($18, status),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $17
+      WHERE id = $19
       RETURNING *`,
       [
         company_name, contact_person, email, phone, mobile, vat_number,
         uses_receipt_rolls, opt_out, invoice_address_street, invoice_address_number,
         invoice_address_city, invoice_address_postal_code, invoice_address_country,
-        delivery_same_as_invoice, notes, status, id
+        invoice_language_code, invoice_language_confirmed, delivery_same_as_invoice, notes, status, id
       ]
     );
 
@@ -405,20 +411,22 @@ router.post('/upload/csv', upload.single('csvFile'), asyncHandler(async (req, re
         // Convert string booleans to actual booleans
         const uses_receipt_rolls = record.uses_receipt_rolls === 'true';
         const delivery_same_as_invoice = record.delivery_same_as_invoice !== 'false';
+        const invoice_language_confirmed = record.invoice_language_confirmed === 'true';
 
         await query(
           `INSERT INTO customers (
             company_name, contact_person, email, phone, mobile, vat_number,
             uses_receipt_rolls, invoice_address_street, invoice_address_number,
             invoice_address_city, invoice_address_postal_code, invoice_address_country,
-            delivery_same_as_invoice, notes, status
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+            invoice_language_code, invoice_language_confirmed, delivery_same_as_invoice, notes, status
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
           [
             record.company_name, record.contact_person, record.email, 
             record.phone, record.mobile, record.vat_number,
             uses_receipt_rolls, record.invoice_address_street, record.invoice_address_number,
             record.invoice_address_city, record.invoice_address_postal_code, 
             record.invoice_address_country || 'Belgium',
+            record.invoice_language_code || 'FR', invoice_language_confirmed,
             delivery_same_as_invoice, record.notes, record.status || 'active'
           ]
         );
@@ -459,7 +467,7 @@ router.get('/export/csv', asyncHandler(async (req, res) => {
       company_name, contact_person, email, phone, mobile, vat_number,
       uses_receipt_rolls, invoice_address_street, invoice_address_number,
       invoice_address_city, invoice_address_postal_code, invoice_address_country,
-      delivery_same_as_invoice, notes, status
+      invoice_language_code, invoice_language_confirmed, delivery_same_as_invoice, notes, status
     FROM customers
     ORDER BY company_name ASC`
   );
@@ -469,13 +477,13 @@ router.get('/export/csv', asyncHandler(async (req, res) => {
       'company_name', 'contact_person', 'email', 'phone', 'mobile', 'vat_number',
       'uses_receipt_rolls', 'invoice_address_street', 'invoice_address_number',
       'invoice_address_city', 'invoice_address_postal_code', 'invoice_address_country',
-      'delivery_same_as_invoice', 'notes', 'status'
+      'invoice_language_code', 'invoice_language_confirmed', 'delivery_same_as_invoice', 'notes', 'status'
     ],
     ...result.rows.map(row => [
       row.company_name, row.contact_person, row.email, row.phone, row.mobile, row.vat_number,
       row.uses_receipt_rolls, row.invoice_address_street, row.invoice_address_number,
       row.invoice_address_city, row.invoice_address_postal_code, row.invoice_address_country,
-      row.delivery_same_as_invoice, row.notes, row.status
+      row.invoice_language_code, row.invoice_language_confirmed, row.delivery_same_as_invoice, row.notes, row.status
     ])
   ];
 
@@ -558,6 +566,7 @@ router.post('/delivery-addresses/import/csv', upload.single('csvFile'), asyncHan
         // Convert string booleans to actual booleans
         const is_primary = record.is_primary === 'true' || record.is_primary === '1';
         const can_place_orders = record.can_place_orders === 'true' || record.can_place_orders === '1';
+        const language_confirmed = record.language_confirmed === 'true' || record.language_confirmed === '1';
 
         // If setting as primary, remove primary flag from other addresses
         if (is_primary) {
@@ -570,8 +579,8 @@ router.post('/delivery-addresses/import/csv', upload.single('csvFile'), asyncHan
         await query(
           `INSERT INTO delivery_addresses (
             customer_id, address_name, street, number, city, postal_code, country,
-            is_primary, can_place_orders, contact_person, contact_phone, contact_email, notes
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+            language_code, language_confirmed, is_primary, can_place_orders, contact_person, contact_phone, contact_email, notes
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
           [
             customerId,
             record.address_name,
@@ -580,6 +589,8 @@ router.post('/delivery-addresses/import/csv', upload.single('csvFile'), asyncHan
             record.city || null,
             record.postal_code || null,
             record.country || 'Belgium',
+            record.language_code || 'FR',
+            language_confirmed,
             is_primary,
             can_place_orders,
             record.contact_person || null,
@@ -624,7 +635,7 @@ router.get('/delivery-addresses/export/csv', asyncHandler(async (req, res) => {
     `SELECT 
       c.company_name as customer_company_name,
       da.address_name, da.street, da.number, da.city, da.postal_code, da.country,
-      da.is_primary, da.can_place_orders, da.contact_person, da.contact_phone, 
+      da.language_code, da.language_confirmed, da.is_primary, da.can_place_orders, da.contact_person, da.contact_phone, 
       da.contact_email, da.notes, da.is_active
     FROM delivery_addresses da
     LEFT JOIN customers c ON da.customer_id = c.id
@@ -635,11 +646,11 @@ router.get('/delivery-addresses/export/csv', asyncHandler(async (req, res) => {
   const csvData = [
     [
       'customer_company_name', 'address_name', 'street', 'number', 'city', 'postal_code', 'country',
-      'is_primary', 'can_place_orders', 'contact_person', 'contact_phone', 'contact_email', 'notes'
+      'language_code', 'language_confirmed', 'is_primary', 'can_place_orders', 'contact_person', 'contact_phone', 'contact_email', 'notes'
     ],
     ...result.rows.map(row => [
       row.customer_company_name, row.address_name, row.street, row.number, row.city, row.postal_code, row.country,
-      row.is_primary, row.can_place_orders, row.contact_person, row.contact_phone, row.contact_email, row.notes
+      row.language_code, row.language_confirmed, row.is_primary, row.can_place_orders, row.contact_person, row.contact_phone, row.contact_email, row.notes
     ])
   ];
 
@@ -716,6 +727,8 @@ router.post('/:customerId/delivery-addresses', asyncHandler(async (req, res) => 
     city,
     postal_code,
     country = 'Belgium',
+    language_code = 'FR',
+    language_confirmed = false,
     is_primary = false,
     can_place_orders = false,
     contact_person,
@@ -743,12 +756,12 @@ router.post('/:customerId/delivery-addresses', asyncHandler(async (req, res) => 
   const result = await query(
     `INSERT INTO delivery_addresses (
       customer_id, address_name, street, number, city, postal_code, country,
-      is_primary, can_place_orders, contact_person, contact_phone, contact_email, notes
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      language_code, language_confirmed, is_primary, can_place_orders, contact_person, contact_phone, contact_email, notes
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
     RETURNING *`,
     [
       customerId, address_name, street, number, city, postal_code, country,
-      is_primary, can_place_orders, contact_person, contact_phone, contact_email, notes
+      language_code, language_confirmed, is_primary, can_place_orders, contact_person, contact_phone, contact_email, notes
     ]
   );
 
@@ -769,6 +782,8 @@ router.put('/delivery-addresses/:addressId', asyncHandler(async (req, res) => {
     city,
     postal_code,
     country,
+    language_code,
+    language_confirmed,
     is_primary,
     can_place_orders,
     contact_person,
@@ -795,19 +810,21 @@ router.put('/delivery-addresses/:addressId', asyncHandler(async (req, res) => {
       city = COALESCE($4, city),
       postal_code = COALESCE($5, postal_code),
       country = COALESCE($6, country),
-      is_primary = COALESCE($7, is_primary),
-      can_place_orders = COALESCE($8, can_place_orders),
-      contact_person = COALESCE($9, contact_person),
-      contact_phone = COALESCE($10, contact_phone),
-      contact_email = COALESCE($11, contact_email),
-      notes = COALESCE($12, notes),
-      is_active = COALESCE($13, is_active),
+      language_code = COALESCE($7, language_code),
+      language_confirmed = COALESCE($8, language_confirmed),
+      is_primary = COALESCE($9, is_primary),
+      can_place_orders = COALESCE($10, can_place_orders),
+      contact_person = COALESCE($11, contact_person),
+      contact_phone = COALESCE($12, contact_phone),
+      contact_email = COALESCE($13, contact_email),
+      notes = COALESCE($14, notes),
+      is_active = COALESCE($15, is_active),
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $14
+    WHERE id = $16
     RETURNING *`,
     [
       address_name, street, number, city, postal_code, country,
-      is_primary, can_place_orders, contact_person, contact_phone, contact_email, notes, is_active,
+      language_code, language_confirmed, is_primary, can_place_orders, contact_person, contact_phone, contact_email, notes, is_active,
       addressId
     ]
   );

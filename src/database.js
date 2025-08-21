@@ -112,6 +112,66 @@ const runMigrations = async () => {
       console.log('⚠️ Address name NOT NULL migration issue:', error.message);
     }
 
+    // Migration 3: Add language fields to customers table
+    const customerLanguageColumns = [
+      { name: 'invoice_language_code', type: 'VARCHAR(5)', default: "'FR'" },
+      { name: 'invoice_language_confirmed', type: 'BOOLEAN', default: 'false' }
+    ];
+
+    for (const column of customerLanguageColumns) {
+      try {
+        // Check if column exists in customers table
+        const columnCheck = await query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'customers' 
+          AND column_name = $1
+        `, [column.name]);
+
+        if (columnCheck.rows.length === 0) {
+          // Column doesn't exist, add it
+          const defaultClause = column.default ? ` DEFAULT ${column.default}` : '';
+          await query(`
+            ALTER TABLE customers 
+            ADD COLUMN ${column.name} ${column.type}${defaultClause}
+          `);
+          console.log(`✅ Added column to customers: ${column.name}`);
+        }
+      } catch (error) {
+        console.log(`⚠️ Customer table column ${column.name} migration issue:`, error.message);
+      }
+    }
+
+    // Migration 4: Add language fields to delivery_addresses table
+    const deliveryLanguageColumns = [
+      { name: 'language_code', type: 'VARCHAR(5)', default: "'FR'" },
+      { name: 'language_confirmed', type: 'BOOLEAN', default: 'false' }
+    ];
+
+    for (const column of deliveryLanguageColumns) {
+      try {
+        // Check if column exists in delivery_addresses table
+        const columnCheck = await query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'delivery_addresses' 
+          AND column_name = $1
+        `, [column.name]);
+
+        if (columnCheck.rows.length === 0) {
+          // Column doesn't exist, add it
+          const defaultClause = column.default ? ` DEFAULT ${column.default}` : '';
+          await query(`
+            ALTER TABLE delivery_addresses 
+            ADD COLUMN ${column.name} ${column.type}${defaultClause}
+          `);
+          console.log(`✅ Added column to delivery_addresses: ${column.name}`);
+        }
+      } catch (error) {
+        console.log(`⚠️ Delivery addresses table column ${column.name} migration issue:`, error.message);
+      }
+    }
+
     console.log('✅ Database migrations completed successfully');
     
   } catch (error) {
