@@ -11,6 +11,9 @@ require('dotenv').config();
 const errorHandler = require('../middleware/errorHandler');
 const auth = require('../middleware/auth');
 
+// Import database initialization
+const { initializeDatabase } = require('./database');
+
 // Import routes
 const authRoutes = require('../routes/auth');
 const customerRoutes = require('../routes/customers');
@@ -35,6 +38,9 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.'
 });
 
+
+// Trust proxy (fix for Nginx reverse proxy)
+app.set('trust proxy', 1);
 
 // CORS configuration
 app.use(cors({
@@ -112,13 +118,29 @@ io.on('connection', (socket) => {
 // Error handling middleware (must be last)
 app.use(errorHandler.errorHandler);
 
-// Start server
+// Initialize database and start server
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Dashboard: http://localhost:${PORT}`);
-  console.log(`🔐 Login: http://localhost:${PORT}/login`);
-  console.log(`🏥 Health check: http://localhost:${PORT}/health`);
-});
+
+async function startServer() {
+  try {
+    // Initialize database schema and run migrations
+    await initializeDatabase();
+    
+    // Start the server
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📊 Dashboard: http://localhost:${PORT}`);
+      console.log(`🔐 Login: http://localhost:${PORT}/login`);
+      console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+    });
+    
+  } catch (error) {
+    console.error('💥 Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Start the server
+startServer();
 
 module.exports = { app, server, io };
