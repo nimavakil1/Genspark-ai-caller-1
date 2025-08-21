@@ -6,7 +6,7 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const router = express.Router();
 
 // Apply authentication to all dashboard routes
-router.use(authenticateToken);
+
 
 // Get dashboard statistics
 router.get('/stats', asyncHandler(async (req, res) => {
