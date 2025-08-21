@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const csv = require('csv-parse');
+const { parse } = require('csv-parse');
 const { stringify } = require('csv-stringify');
 const fs = require('fs').promises;
 const path = require('path');
@@ -382,74 +382,66 @@ router.post('/upload/csv', upload.single('csvFile'), asyncHandler(async (req, re
     const errors = [];
 
     // Parse CSV with semicolon delimiter (European format)
-    const parser = csv({
-      delimiter: ';',
-      columns: true,
-      skip_empty_lines: true,
-      trim: true
-    });
-
-    parser.on('readable', function() {
-      let record;
-      while (record = parser.read()) {
-        records.push(record);
-      }
-    });
-
-    parser.on('error', function(err) {
-      errors.push(err.message);
-    });
-
-    parser.on('end', async function() {
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const record of records) {
-        try {
-          // Convert string booleans to actual booleans
-          const uses_receipt_rolls = record.uses_receipt_rolls === 'true';
-          const delivery_same_as_invoice = record.delivery_same_as_invoice !== 'false';
-
-          await query(
-            `INSERT INTO customers (
-              company_name, contact_person, email, phone, mobile, vat_number,
-              uses_receipt_rolls, invoice_address_street, invoice_address_number,
-              invoice_address_city, invoice_address_postal_code, invoice_address_country,
-              delivery_same_as_invoice, notes, status
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-            [
-              record.company_name, record.contact_person, record.email, 
-              record.phone, record.mobile, record.vat_number,
-              uses_receipt_rolls, record.invoice_address_street, record.invoice_address_number,
-              record.invoice_address_city, record.invoice_address_postal_code, 
-              record.invoice_address_country || 'Belgium',
-              delivery_same_as_invoice, record.notes, record.status || 'active'
-            ]
-          );
-          successCount++;
-        } catch (error) {
-          console.error('Error importing customer:', record.company_name, error.message);
-          errors.push(`${record.company_name}: ${error.message}`);
-          errorCount++;
-        }
-      }
-
-      // Clean up uploaded file
-      await fs.unlink(req.file.path);
-
-      res.json({
-        success: true,
-        message: `Import completed. ${successCount} customers imported successfully.`,
-        data: {
-          successCount,
-          errorCount,
-          errors: errors.slice(0, 10) // Limit errors shown
+    const parsedRecords = await new Promise((resolve, reject) => {
+      parse(fileContent, {
+        delimiter: ';',
+        columns: true,
+        skip_empty_lines: true,
+        trim: true
+      }, (err, records) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(records);
         }
       });
     });
 
-    parser.write(fileContent);
-    parser.end();
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const record of parsedRecords) {
+      try {
+        // Convert string booleans to actual booleans
+        const uses_receipt_rolls = record.uses_receipt_rolls === 'true';
+        const delivery_same_as_invoice = record.delivery_same_as_invoice !== 'false';
+
+        await query(
+          `INSERT INTO customers (
+            company_name, contact_person, email, phone, mobile, vat_number,
+            uses_receipt_rolls, invoice_address_street, invoice_address_number,
+            invoice_address_city, invoice_address_postal_code, invoice_address_country,
+            delivery_same_as_invoice, notes, status
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+          [
+            record.company_name, record.contact_person, record.email, 
+            record.phone, record.mobile, record.vat_number,
+            uses_receipt_rolls, record.invoice_address_street, record.invoice_address_number,
+            record.invoice_address_city, record.invoice_address_postal_code, 
+            record.invoice_address_country || 'Belgium',
+            delivery_same_as_invoice, record.notes, record.status || 'active'
+          ]
+        );
+        successCount++;
+      } catch (error) {
+        console.error('Error importing customer:', record.company_name, error.message);
+        errors.push(`${record.company_name}: ${error.message}`);
+        errorCount++;
+      }
+    }
+
+    // Clean up uploaded file
+    await fs.unlink(req.file.path);
+
+    res.json({
+      success: true,
+      message: `Import completed. ${successCount} customers imported successfully.`,
+      data: {
+        successCount,
+        errorCount,
+        errors: errors.slice(0, 10) // Limit errors shown
+      }
+    });
 
   } catch (error) {
     // Clean up uploaded file
@@ -511,119 +503,111 @@ router.post('/delivery-addresses/import/csv', upload.single('csvFile'), asyncHan
 
   try {
     const fileContent = await fs.readFile(req.file.path, 'utf-8');
-    const records = [];
     const errors = [];
 
-    const parser = csv({
-      delimiter: ';', // European CSV format
-      columns: true,
-      skip_empty_lines: true,
-      trim: true
-    });
-
-    parser.on('readable', function() {
-      let record;
-      while (record = parser.read()) {
-        records.push(record);
-      }
-    });
-
-    parser.on('error', function(err) {
-      errors.push(err.message);
-    });
-
-    parser.on('end', async function() {
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const record of records) {
-        try {
-          // Validate required fields
-          if (!record.customer_company_name && !record.customer_id) {
-            errors.push(`Row: Missing customer identification (company_name or customer_id)`);
-            errorCount++;
-            continue;
-          }
-
-          if (!record.address_name) {
-            errors.push(`Row: Missing address_name for customer ${record.customer_company_name || record.customer_id}`);
-            errorCount++;
-            continue;
-          }
-
-          // Find customer by company name or ID
-          let customerId = record.customer_id;
-          if (!customerId && record.customer_company_name) {
-            const customerResult = await query(
-              'SELECT id FROM customers WHERE company_name ILIKE $1',
-              [record.customer_company_name]
-            );
-            
-            if (customerResult.rows.length === 0) {
-              errors.push(`Customer not found: ${record.customer_company_name}`);
-              errorCount++;
-              continue;
-            }
-            customerId = customerResult.rows[0].id;
-          }
-
-          // Convert string booleans to actual booleans
-          const is_primary = record.is_primary === 'true' || record.is_primary === '1';
-          const can_place_orders = record.can_place_orders === 'true' || record.can_place_orders === '1';
-
-          // If setting as primary, remove primary flag from other addresses
-          if (is_primary) {
-            await query(
-              'UPDATE delivery_addresses SET is_primary = false WHERE customer_id = $1',
-              [customerId]
-            );
-          }
-
-          await query(
-            `INSERT INTO delivery_addresses (
-              customer_id, address_name, street, number, city, postal_code, country,
-              is_primary, can_place_orders, contact_person, contact_phone, contact_email, notes
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-            [
-              customerId,
-              record.address_name,
-              record.street || null,
-              record.number || null,
-              record.city || null,
-              record.postal_code || null,
-              record.country || 'Belgium',
-              is_primary,
-              can_place_orders,
-              record.contact_person || null,
-              record.contact_phone || null,
-              record.contact_email || null,
-              record.notes || null
-            ]
-          );
-          successCount++;
-        } catch (error) {
-          console.error('Error importing delivery address:', record.address_name, error.message);
-          errors.push(`${record.address_name}: ${error.message}`);
-          errorCount++;
-        }
-      }
-
-      // Clean up uploaded file
-      await fs.unlink(req.file.path);
-
-      res.json({
-        success: true,
-        message: `Import completed. ${successCount} delivery addresses imported successfully.`,
-        data: {
-          successCount,
-          errorCount,
-          errors: errors.slice(0, 10) // Limit errors shown
+    // Parse CSV with semicolon delimiter (European format)
+    const parsedRecords = await new Promise((resolve, reject) => {
+      parse(fileContent, {
+        delimiter: ';', // European CSV format
+        columns: true,
+        skip_empty_lines: true,
+        trim: true
+      }, (err, records) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(records);
         }
       });
     });
 
-    parser.write(fileContent);
-    parser.end();
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const record of parsedRecords) {
+      try {
+        // Validate required fields
+        if (!record.customer_company_name && !record.customer_id) {
+          errors.push(`Row: Missing customer identification (company_name or customer_id)`);
+          errorCount++;
+          continue;
+        }
+
+        if (!record.address_name) {
+          errors.push(`Row: Missing address_name for customer ${record.customer_company_name || record.customer_id}`);
+          errorCount++;
+          continue;
+        }
+
+        // Find customer by company name or ID
+        let customerId = record.customer_id;
+        if (!customerId && record.customer_company_name) {
+          const customerResult = await query(
+            'SELECT id FROM customers WHERE company_name ILIKE $1',
+            [record.customer_company_name]
+          );
+          
+          if (customerResult.rows.length === 0) {
+            errors.push(`Customer not found: ${record.customer_company_name}`);
+            errorCount++;
+            continue;
+          }
+          customerId = customerResult.rows[0].id;
+        }
+
+        // Convert string booleans to actual booleans
+        const is_primary = record.is_primary === 'true' || record.is_primary === '1';
+        const can_place_orders = record.can_place_orders === 'true' || record.can_place_orders === '1';
+
+        // If setting as primary, remove primary flag from other addresses
+        if (is_primary) {
+          await query(
+            'UPDATE delivery_addresses SET is_primary = false WHERE customer_id = $1',
+            [customerId]
+          );
+        }
+
+        await query(
+          `INSERT INTO delivery_addresses (
+            customer_id, address_name, street, number, city, postal_code, country,
+            is_primary, can_place_orders, contact_person, contact_phone, contact_email, notes
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+          [
+            customerId,
+            record.address_name,
+            record.street || null,
+            record.number || null,
+            record.city || null,
+            record.postal_code || null,
+            record.country || 'Belgium',
+            is_primary,
+            can_place_orders,
+            record.contact_person || null,
+            record.contact_phone || null,
+            record.contact_email || null,
+            record.notes || null
+          ]
+        );
+        successCount++;
+      } catch (error) {
+        console.error('Error importing delivery address:', record.address_name, error.message);
+        errors.push(`${record.address_name}: ${error.message}`);
+        errorCount++;
+      }
+    }
+
+    // Clean up uploaded file
+    await fs.unlink(req.file.path);
+
+    res.json({
+      success: true,
+      message: `Import completed. ${successCount} delivery addresses imported successfully.`,
+      data: {
+        successCount,
+        errorCount,
+        errors: errors.slice(0, 10) // Limit errors shown
+      }
+    });
 
   } catch (error) {
     // Clean up uploaded file
