@@ -500,4 +500,4 @@ router.get('/export/csv', asyncHandler(async (req, res) => {
   });
 }));
 
-module.exports = router;
+module.exports = router;// Ensure PUT route is available for customer updates
