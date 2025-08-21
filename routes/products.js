@@ -25,14 +25,8 @@ router.get('/', asyncHandler(async (req, res) => {
 
   // Search filter
   if (search) {
-    whereClause += ` AND (name ILIKE $${params.length + 1} OR description ILIKE $${params.length + 1} OR category ILIKE $${params.length + 1})`;
+    whereClause += ` AND (name ILIKE $${params.length + 1} OR description ILIKE $${params.length + 1} OR sku ILIKE $${params.length + 1})`;
     params.push(`%${search}%`);
-  }
-
-  // Category filter
-  if (category !== 'all') {
-    whereClause += ` AND category = $${params.length + 1}`;
-    params.push(category);
   }
 
   // Active filter
@@ -98,16 +92,8 @@ router.post('/', asyncHandler(async (req, res) => {
   const {
     name,
     description,
-    category,
-    price,
-    currency = 'EUR',
-    width_mm,
-    diameter_mm,
-    core_diameter_mm,
-    thermal = false,
-    color,
-    stock_quantity = 0,
-    min_stock_level = 10,
+    sku,
+    shopify_product_id,
     is_active = true
   } = req.body;
 
@@ -119,25 +105,19 @@ router.post('/', asyncHandler(async (req, res) => {
     });
   }
 
-  if (price !== null && price !== undefined && price < 0) {
+  if (!sku) {
     return res.status(400).json({
       success: false,
-      error: 'Price cannot be negative'
+      error: 'SKU is required'
     });
   }
 
   const result = await query(
     `INSERT INTO products (
-      name, description, category, price, currency,
-      width_mm, diameter_mm, core_diameter_mm, thermal, color,
-      stock_quantity, min_stock_level, is_active
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      name, description, sku, shopify_product_id, is_active
+    ) VALUES ($1, $2, $3, $4, $5)
     RETURNING *`,
-    [
-      name, description, category, price, currency,
-      width_mm, diameter_mm, core_diameter_mm, thermal, color,
-      stock_quantity, min_stock_level, is_active
-    ]
+    [name, description, sku, shopify_product_id, is_active]
   );
 
   res.status(201).json({
@@ -147,56 +127,28 @@ router.post('/', asyncHandler(async (req, res) => {
   });
 }));
 
-// Update product
+// Update product (only editable fields)
 router.put('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const {
     name,
     description,
-    category,
-    price,
-    currency,
-    width_mm,
-    diameter_mm,
-    core_diameter_mm,
-    thermal,
-    color,
-    stock_quantity,
-    min_stock_level,
+    sku,
+    shopify_product_id,
     is_active
   } = req.body;
-
-  // Validation
-  if (price !== null && price !== undefined && price < 0) {
-    return res.status(400).json({
-      success: false,
-      error: 'Price cannot be negative'
-    });
-  }
 
   const result = await query(
     `UPDATE products SET
       name = COALESCE($1, name),
       description = COALESCE($2, description),
-      category = COALESCE($3, category),
-      price = COALESCE($4, price),
-      currency = COALESCE($5, currency),
-      width_mm = COALESCE($6, width_mm),
-      diameter_mm = COALESCE($7, diameter_mm),
-      core_diameter_mm = COALESCE($8, core_diameter_mm),
-      thermal = COALESCE($9, thermal),
-      color = COALESCE($10, color),
-      stock_quantity = COALESCE($11, stock_quantity),
-      min_stock_level = COALESCE($12, min_stock_level),
-      is_active = COALESCE($13, is_active),
+      sku = COALESCE($3, sku),
+      shopify_product_id = COALESCE($4, shopify_product_id),
+      is_active = COALESCE($5, is_active),
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $14
+    WHERE id = $6
     RETURNING *`,
-    [
-      name, description, category, price, currency,
-      width_mm, diameter_mm, core_diameter_mm, thermal, color,
-      stock_quantity, min_stock_level, is_active, id
-    ]
+    [name, description, sku, shopify_product_id, is_active, id]
   );
 
   if (result.rows.length === 0) {
@@ -235,26 +187,11 @@ router.delete('/:id', asyncHandler(async (req, res) => {
   });
 }));
 
-// Get product categories
-router.get('/meta/categories', asyncHandler(async (req, res) => {
-  const result = await query(
-    `SELECT DISTINCT category 
-    FROM products 
-    WHERE category IS NOT NULL AND category != ''
-    ORDER BY category`
-  );
-
-  res.json({
-    success: true,
-    data: result.rows.map(row => row.category)
-  });
-}));
-
-// Get low stock products
+// Get low stock products (simplified without min_stock_level)
 router.get('/stock/low', asyncHandler(async (req, res) => {
   const result = await query(
     `SELECT * FROM products 
-    WHERE stock_quantity <= min_stock_level AND is_active = true
+    WHERE stock_quantity <= 10 AND is_active = true
     ORDER BY stock_quantity ASC`
   );
 
@@ -264,38 +201,21 @@ router.get('/stock/low', asyncHandler(async (req, res) => {
   });
 }));
 
-// Update stock quantity
-router.patch('/:id/stock', asyncHandler(async (req, res) => {
+// Update stock quantity from Shopify (for internal sync only)
+router.patch('/:id/sync-shopify', asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { quantity, operation = 'set' } = req.body; // operation: 'set', 'add', 'subtract'
+  const { price, stock_quantity, shopify_product_id } = req.body;
 
-  if (quantity === undefined || quantity === null) {
-    return res.status(400).json({
-      success: false,
-      error: 'Quantity is required'
-    });
-  }
-
-  let updateQuery;
-  let params;
-
-  switch (operation) {
-    case 'add':
-      updateQuery = `UPDATE products SET stock_quantity = stock_quantity + $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`;
-      params = [quantity, id];
-      break;
-    case 'subtract':
-      updateQuery = `UPDATE products SET stock_quantity = GREATEST(stock_quantity - $1, 0), updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`;
-      params = [quantity, id];
-      break;
-    case 'set':
-    default:
-      updateQuery = `UPDATE products SET stock_quantity = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`;
-      params = [quantity, id];
-      break;
-  }
-
-  const result = await query(updateQuery, params);
+  const result = await query(
+    `UPDATE products SET
+      price = COALESCE($1, price),
+      stock_quantity = COALESCE($2, stock_quantity),
+      shopify_product_id = COALESCE($3, shopify_product_id),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $4
+    RETURNING *`,
+    [price, stock_quantity, shopify_product_id, id]
+  );
 
   if (result.rows.length === 0) {
     return res.status(404).json({
@@ -306,7 +226,7 @@ router.patch('/:id/stock', asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    message: 'Stock updated successfully',
+    message: 'Product synced with Shopify successfully',
     data: result.rows[0]
   });
 }));
@@ -317,7 +237,7 @@ router.get('/stats/summary', asyncHandler(async (req, res) => {
     SELECT 
       COUNT(*) as total_products,
       COUNT(CASE WHEN is_active = true THEN 1 END) as active_products,
-      COUNT(CASE WHEN stock_quantity <= min_stock_level THEN 1 END) as low_stock_products,
+      COUNT(CASE WHEN stock_quantity <= 10 THEN 1 END) as low_stock_products,
       SUM(stock_quantity) as total_stock,
       AVG(price) as avg_price,
       MAX(price) as max_price,
@@ -325,21 +245,10 @@ router.get('/stats/summary', asyncHandler(async (req, res) => {
     FROM products
   `);
 
-  const categories = await query(`
-    SELECT 
-      category,
-      COUNT(*) as product_count
-    FROM products
-    WHERE category IS NOT NULL AND category != ''
-    GROUP BY category
-    ORDER BY product_count DESC
-  `);
-
   res.json({
     success: true,
     data: {
-      summary: stats.rows[0],
-      categories: categories.rows
+      summary: stats.rows[0]
     }
   });
 }));
