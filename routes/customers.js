@@ -352,12 +352,12 @@ router.get('/download/template', (req, res) => {
       'company_name', 'contact_person', 'email', 'phone', 'mobile', 'vat_number',
       'uses_receipt_rolls', 'invoice_address_street', 'invoice_address_number',
       'invoice_address_city', 'invoice_address_postal_code', 'invoice_address_country',
-      'delivery_same_as_invoice', 'notes', 'status'
+      'invoice_language_code', 'invoice_language_confirmed', 'delivery_same_as_invoice', 'notes', 'status'
     ],
     [
       'Example Company BVBA', 'Jan Janssen', 'jan@example.be', '+32 2 123 45 67', 
       '+32 476 12 34 56', 'BE0123456789', 'true', 'Kerkstraat', '123',
-      'Brussel', '1000', 'Belgium', 'false', 'Important customer', 'active'
+      'Brussel', '1000', 'Belgium', 'NL', 'true', 'false', 'Important customer', 'active'
     ]
   ];
 
@@ -672,15 +672,15 @@ router.get('/delivery-addresses/template/csv', (req, res) => {
   const templateData = [
     [
       'customer_company_name', 'address_name', 'street', 'number', 'city', 'postal_code', 'country',
-      'is_primary', 'can_place_orders', 'contact_person', 'contact_phone', 'contact_email', 'notes'
+      'language_code', 'language_confirmed', 'is_primary', 'can_place_orders', 'contact_person', 'contact_phone', 'contact_email', 'notes'
     ],
     [
       'Example Company Ltd', 'Main Warehouse', 'Industrial Street', '123', 'Brussels', '1000', 'Belgium',
-      'true', 'false', 'John Doe', '+32123456789', 'john@example.com', 'Main delivery location'
+      'FR', 'true', 'true', 'false', 'John Doe', '+32123456789', 'john@example.com', 'Main delivery location - French confirmed'
     ],
     [
       'Example Company Ltd', 'Store Branch 1', 'Commercial Ave', '456', 'Antwerp', '2000', 'Belgium',
-      'false', 'true', 'Jane Smith', '+32987654321', 'jane@example.com', 'Can place orders independently'
+      'NL', 'false', 'false', 'true', 'Jane Smith', '+32987654321', 'jane@example.com', 'Can place orders independently - Dutch not confirmed'
     ]
   ];
 
