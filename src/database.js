@@ -85,6 +85,7 @@ const initializeDatabase = async () => {
         mobile VARCHAR(20),
         vat_number VARCHAR(50),
         uses_receipt_rolls BOOLEAN DEFAULT false,
+        opt_out BOOLEAN DEFAULT false,
         invoice_address_street VARCHAR(255),
         invoice_address_number VARCHAR(20),
         invoice_address_city VARCHAR(100),

@@ -1,5 +1,5 @@
 const express = require('express');
-const { query } = require('../src/database');
+const { query, transaction } = require('../src/database');
 const { authenticateToken } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 
@@ -15,8 +15,7 @@ router.get('/', asyncHandler(async (req, res) => {
     limit = 10, 
     search = '', 
     category = 'all',
-    is_active = 'all',
-    low_stock = 'false'
+    active_only = 'false'
   } = req.query;
 
   const offset = (page - 1) * limit;
@@ -26,7 +25,7 @@ router.get('/', asyncHandler(async (req, res) => {
 
   // Search filter
   if (search) {
-    whereClause += ` AND (name ILIKE $${params.length + 1} OR description ILIKE $${params.length + 1})`;
+    whereClause += ` AND (name ILIKE $${params.length + 1} OR description ILIKE $${params.length + 1} OR category ILIKE $${params.length + 1})`;
     params.push(`%${search}%`);
   }
 
@@ -36,15 +35,9 @@ router.get('/', asyncHandler(async (req, res) => {
     params.push(category);
   }
 
-  // Active status filter
-  if (is_active !== 'all') {
-    whereClause += ` AND is_active = $${params.length + 1}`;
-    params.push(is_active === 'true');
-  }
-
-  // Low stock filter
-  if (low_stock === 'true') {
-    whereClause += ` AND stock_quantity <= min_stock_level`;
+  // Active filter
+  if (active_only === 'true') {
+    whereClause += ` AND is_active = true`;
   }
 
   // Get total count
@@ -126,7 +119,7 @@ router.post('/', asyncHandler(async (req, res) => {
     });
   }
 
-  if (price && price < 0) {
+  if (price !== null && price !== undefined && price < 0) {
     return res.status(400).json({
       success: false,
       error: 'Price cannot be negative'
@@ -135,13 +128,15 @@ router.post('/', asyncHandler(async (req, res) => {
 
   const result = await query(
     `INSERT INTO products (
-      name, description, category, price, currency, width_mm, diameter_mm,
-      core_diameter_mm, thermal, color, stock_quantity, min_stock_level, is_active
+      name, description, category, price, currency,
+      width_mm, diameter_mm, core_diameter_mm, thermal, color,
+      stock_quantity, min_stock_level, is_active
     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     RETURNING *`,
     [
-      name, description, category, price, currency, width_mm, diameter_mm,
-      core_diameter_mm, thermal, color, stock_quantity, min_stock_level, is_active
+      name, description, category, price, currency,
+      width_mm, diameter_mm, core_diameter_mm, thermal, color,
+      stock_quantity, min_stock_level, is_active
     ]
   );
 
@@ -172,7 +167,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
   } = req.body;
 
   // Validation
-  if (price && price < 0) {
+  if (price !== null && price !== undefined && price < 0) {
     return res.status(400).json({
       success: false,
       error: 'Price cannot be negative'
@@ -198,9 +193,9 @@ router.put('/:id', asyncHandler(async (req, res) => {
     WHERE id = $14
     RETURNING *`,
     [
-      name, description, category, price, currency, width_mm, diameter_mm,
-      core_diameter_mm, thermal, color, stock_quantity, min_stock_level,
-      is_active, id
+      name, description, category, price, currency,
+      width_mm, diameter_mm, core_diameter_mm, thermal, color,
+      stock_quantity, min_stock_level, is_active, id
     ]
   );
 
@@ -222,19 +217,6 @@ router.put('/:id', asyncHandler(async (req, res) => {
 router.delete('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  // Check if product is used in any orders
-  const ordersResult = await query(
-    'SELECT COUNT(*) as count FROM order_items WHERE product_id = $1',
-    [id]
-  );
-
-  if (parseInt(ordersResult.rows[0].count) > 0) {
-    return res.status(400).json({
-      success: false,
-      error: 'Cannot delete product that is referenced in orders. Set it as inactive instead.'
-    });
-  }
-
   const result = await query(
     'DELETE FROM products WHERE id = $1 RETURNING *',
     [id]
@@ -254,25 +236,26 @@ router.delete('/:id', asyncHandler(async (req, res) => {
 }));
 
 // Get product categories
-router.get('/categories/list', asyncHandler(async (req, res) => {
+router.get('/meta/categories', asyncHandler(async (req, res) => {
   const result = await query(
-    'SELECT DISTINCT category FROM products WHERE category IS NOT NULL ORDER BY category ASC',
-    []
+    `SELECT DISTINCT category 
+    FROM products 
+    WHERE category IS NOT NULL AND category != ''
+    ORDER BY category`
   );
-
-  const categories = result.rows.map(row => row.category);
 
   res.json({
     success: true,
-    data: categories
+    data: result.rows.map(row => row.category)
   });
 }));
 
 // Get low stock products
 router.get('/stock/low', asyncHandler(async (req, res) => {
   const result = await query(
-    'SELECT * FROM products WHERE stock_quantity <= min_stock_level AND is_active = true ORDER BY stock_quantity ASC',
-    []
+    `SELECT * FROM products 
+    WHERE stock_quantity <= min_stock_level AND is_active = true
+    ORDER BY stock_quantity ASC`
   );
 
   res.json({
@@ -282,38 +265,34 @@ router.get('/stock/low', asyncHandler(async (req, res) => {
 }));
 
 // Update stock quantity
-router.put('/:id/stock', asyncHandler(async (req, res) => {
+router.patch('/:id/stock', asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { quantity, operation = 'set' } = req.body;
+  const { quantity, operation = 'set' } = req.body; // operation: 'set', 'add', 'subtract'
 
-  if (typeof quantity !== 'number') {
+  if (quantity === undefined || quantity === null) {
     return res.status(400).json({
       success: false,
-      error: 'Quantity must be a number'
+      error: 'Quantity is required'
     });
   }
 
-  let updateQuery = '';
-  let params = [];
+  let updateQuery;
+  let params;
 
   switch (operation) {
-    case 'set':
-      updateQuery = 'UPDATE products SET stock_quantity = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *';
-      params = [quantity, id];
-      break;
     case 'add':
-      updateQuery = 'UPDATE products SET stock_quantity = stock_quantity + $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *';
+      updateQuery = `UPDATE products SET stock_quantity = stock_quantity + $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`;
       params = [quantity, id];
       break;
     case 'subtract':
-      updateQuery = 'UPDATE products SET stock_quantity = GREATEST(stock_quantity - $1, 0), updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *';
+      updateQuery = `UPDATE products SET stock_quantity = GREATEST(stock_quantity - $1, 0), updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`;
       params = [quantity, id];
       break;
+    case 'set':
     default:
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid operation. Use "set", "add", or "subtract"'
-      });
+      updateQuery = `UPDATE products SET stock_quantity = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`;
+      params = [quantity, id];
+      break;
   }
 
   const result = await query(updateQuery, params);
@@ -327,64 +306,40 @@ router.put('/:id/stock', asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    message: `Stock ${operation === 'set' ? 'updated' : operation === 'add' ? 'increased' : 'decreased'} successfully`,
+    message: 'Stock updated successfully',
     data: result.rows[0]
   });
 }));
 
 // Get product statistics
-router.get('/stats/overview', asyncHandler(async (req, res) => {
-  // Total products
-  const totalProductsResult = await query('SELECT COUNT(*) as count FROM products');
-  const totalProducts = parseInt(totalProductsResult.rows[0].count);
-
-  // Active products
-  const activeProductsResult = await query('SELECT COUNT(*) as count FROM products WHERE is_active = true');
-  const activeProducts = parseInt(activeProductsResult.rows[0].count);
-
-  // Low stock products
-  const lowStockResult = await query('SELECT COUNT(*) as count FROM products WHERE stock_quantity <= min_stock_level');
-  const lowStockProducts = parseInt(lowStockResult.rows[0].count);
-
-  // Products by category
-  const categoriesResult = await query(
-    `SELECT 
-      category,
-      COUNT(*) as count
-    FROM products 
-    WHERE category IS NOT NULL
-    GROUP BY category
-    ORDER BY count DESC`
-  );
-
-  // Average price by category
-  const avgPriceResult = await query(
-    `SELECT 
-      category,
+router.get('/stats/summary', asyncHandler(async (req, res) => {
+  const stats = await query(`
+    SELECT 
+      COUNT(*) as total_products,
+      COUNT(CASE WHEN is_active = true THEN 1 END) as active_products,
+      COUNT(CASE WHEN stock_quantity <= min_stock_level THEN 1 END) as low_stock_products,
+      SUM(stock_quantity) as total_stock,
       AVG(price) as avg_price,
-      MIN(price) as min_price,
-      MAX(price) as max_price
-    FROM products 
-    WHERE category IS NOT NULL AND price IS NOT NULL
-    GROUP BY category
-    ORDER BY avg_price DESC`
-  );
+      MAX(price) as max_price,
+      MIN(price) as min_price
+    FROM products
+  `);
 
-  // Total inventory value
-  const inventoryValueResult = await query(
-    'SELECT SUM(stock_quantity * COALESCE(price, 0)) as total_value FROM products WHERE is_active = true'
-  );
-  const totalInventoryValue = parseFloat(inventoryValueResult.rows[0].total_value) || 0;
+  const categories = await query(`
+    SELECT 
+      category,
+      COUNT(*) as product_count
+    FROM products
+    WHERE category IS NOT NULL AND category != ''
+    GROUP BY category
+    ORDER BY product_count DESC
+  `);
 
   res.json({
     success: true,
     data: {
-      totalProducts,
-      activeProducts,
-      lowStockProducts,
-      totalInventoryValue,
-      categoriesStats: categoriesResult.rows,
-      avgPriceByCategory: avgPriceResult.rows
+      summary: stats.rows[0],
+      categories: categories.rows
     }
   });
 }));

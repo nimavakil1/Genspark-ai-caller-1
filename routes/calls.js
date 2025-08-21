@@ -1,5 +1,5 @@
 const express = require('express');
-const { query } = require('../src/database');
+const { query, transaction } = require('../src/database');
 const { authenticateToken } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 
@@ -8,22 +8,28 @@ const router = express.Router();
 // Apply authentication to all call routes
 
 
-// Get all call logs with pagination and filtering
+// Get all calls with pagination and filtering
 router.get('/', asyncHandler(async (req, res) => {
   const { 
     page = 1, 
     limit = 10, 
+    customer_id,
     direction = 'all',
     status = 'all',
-    customer_id = null,
-    date_from = null,
-    date_to = null
+    start_date,
+    end_date
   } = req.query;
 
   const offset = (page - 1) * limit;
 
   let whereClause = 'WHERE 1=1';
   const params = [];
+
+  // Customer filter
+  if (customer_id) {
+    whereClause += ` AND cl.customer_id = $${params.length + 1}`;
+    params.push(customer_id);
+  }
 
   // Direction filter
   if (direction !== 'all') {
@@ -37,21 +43,15 @@ router.get('/', asyncHandler(async (req, res) => {
     params.push(status);
   }
 
-  // Customer filter
-  if (customer_id) {
-    whereClause += ` AND cl.customer_id = $${params.length + 1}`;
-    params.push(customer_id);
-  }
-
   // Date range filter
-  if (date_from) {
+  if (start_date) {
     whereClause += ` AND cl.created_at >= $${params.length + 1}`;
-    params.push(date_from);
+    params.push(start_date);
   }
 
-  if (date_to) {
+  if (end_date) {
     whereClause += ` AND cl.created_at <= $${params.length + 1}`;
-    params.push(date_to + ' 23:59:59');
+    params.push(end_date);
   }
 
   // Get total count
@@ -61,12 +61,13 @@ router.get('/', asyncHandler(async (req, res) => {
   );
   const totalCalls = parseInt(countResult.rows[0].count);
 
-  // Get call logs with customer information
+  // Get calls with customer information
   const result = await query(
     `SELECT 
       cl.*,
       c.company_name,
-      c.contact_person
+      c.contact_person,
+      c.opt_out
     FROM call_logs cl
     LEFT JOIN customers c ON cl.customer_id = c.id
     ${whereClause}
@@ -90,7 +91,7 @@ router.get('/', asyncHandler(async (req, res) => {
   });
 }));
 
-// Get single call log by ID
+// Get single call by ID
 router.get('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
@@ -101,7 +102,8 @@ router.get('/:id', asyncHandler(async (req, res) => {
       c.contact_person,
       c.email,
       c.phone,
-      c.mobile
+      c.mobile,
+      c.opt_out
     FROM call_logs cl
     LEFT JOIN customers c ON cl.customer_id = c.id
     WHERE cl.id = $1`,
@@ -111,7 +113,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
   if (result.rows.length === 0) {
     return res.status(404).json({
       success: false,
-      error: 'Call log not found'
+      error: 'Call not found'
     });
   }
 
@@ -127,7 +129,7 @@ router.post('/', asyncHandler(async (req, res) => {
     customer_id,
     phone_number,
     direction,
-    duration,
+    duration = 0,
     status,
     recording_url,
     ai_summary,
@@ -136,10 +138,10 @@ router.post('/', asyncHandler(async (req, res) => {
   } = req.body;
 
   // Validation
-  if (!phone_number || !direction || !status) {
+  if (!phone_number || !direction) {
     return res.status(400).json({
       success: false,
-      error: 'Phone number, direction, and status are required'
+      error: 'Phone number and direction are required'
     });
   }
 
@@ -150,9 +152,24 @@ router.post('/', asyncHandler(async (req, res) => {
     });
   }
 
+  // Check if customer exists and is not opted out for outbound calls
+  if (customer_id && direction === 'outbound') {
+    const customerResult = await query(
+      'SELECT opt_out FROM customers WHERE id = $1',
+      [customer_id]
+    );
+
+    if (customerResult.rows.length > 0 && customerResult.rows[0].opt_out) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot make outbound calls to customers who have opted out'
+      });
+    }
+  }
+
   const result = await query(
     `INSERT INTO call_logs (
-      customer_id, phone_number, direction, duration, status, 
+      customer_id, phone_number, direction, duration, status,
       recording_url, ai_summary, sentiment, follow_up_required
     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     RETURNING *`,
@@ -206,7 +223,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
   if (result.rows.length === 0) {
     return res.status(404).json({
       success: false,
-      error: 'Call log not found'
+      error: 'Call not found'
     });
   }
 
@@ -229,7 +246,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
   if (result.rows.length === 0) {
     return res.status(404).json({
       success: false,
-      error: 'Call log not found'
+      error: 'Call not found'
     });
   }
 
@@ -240,115 +257,58 @@ router.delete('/:id', asyncHandler(async (req, res) => {
 }));
 
 // Get call statistics
-router.get('/stats/overview', asyncHandler(async (req, res) => {
-  const { days = 30 } = req.query;
+router.get('/stats/summary', asyncHandler(async (req, res) => {
+  const { start_date, end_date, customer_id } = req.query;
 
-  // Total calls
-  const totalCallsResult = await query(
-    'SELECT COUNT(*) as count FROM call_logs WHERE created_at >= CURRENT_DATE - INTERVAL $1',
-    [`${days} days`]
-  );
+  let whereClause = 'WHERE 1=1';
+  const params = [];
 
-  // Calls by direction
-  const directionStatsResult = await query(
-    `SELECT 
-      direction,
-      COUNT(*) as count,
-      AVG(duration) as avg_duration
-    FROM call_logs 
-    WHERE created_at >= CURRENT_DATE - INTERVAL $1
-    GROUP BY direction`,
-    [`${days} days`]
-  );
+  if (start_date) {
+    whereClause += ` AND created_at >= $${params.length + 1}`;
+    params.push(start_date);
+  }
 
-  // Calls by status
-  const statusStatsResult = await query(
-    `SELECT 
-      status,
-      COUNT(*) as count
-    FROM call_logs 
-    WHERE created_at >= CURRENT_DATE - INTERVAL $1
-    GROUP BY status`,
-    [`${days} days`]
-  );
+  if (end_date) {
+    whereClause += ` AND created_at <= $${params.length + 1}`;
+    params.push(end_date);
+  }
 
-  // Sentiment analysis
-  const sentimentStatsResult = await query(
-    `SELECT 
+  if (customer_id) {
+    whereClause += ` AND customer_id = $${params.length + 1}`;
+    params.push(customer_id);
+  }
+
+  const stats = await query(`
+    SELECT 
+      COUNT(*) as total_calls,
+      COUNT(CASE WHEN direction = 'inbound' THEN 1 END) as inbound_calls,
+      COUNT(CASE WHEN direction = 'outbound' THEN 1 END) as outbound_calls,
+      COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_calls,
+      COUNT(CASE WHEN status = 'missed' THEN 1 END) as missed_calls,
+      COUNT(CASE WHEN follow_up_required = true THEN 1 END) as follow_up_required,
+      AVG(duration) as avg_duration,
+      MAX(duration) as max_duration,
+      MIN(duration) as min_duration
+    FROM call_logs
+    ${whereClause}
+  `, params);
+
+  const sentimentStats = await query(`
+    SELECT 
       sentiment,
       COUNT(*) as count
-    FROM call_logs 
-    WHERE created_at >= CURRENT_DATE - INTERVAL $1
-      AND sentiment IS NOT NULL
-    GROUP BY sentiment`,
-    [`${days} days`]
-  );
-
-  // Follow-up required
-  const followUpResult = await query(
-    `SELECT 
-      COUNT(CASE WHEN follow_up_required = true THEN 1 END) as follow_up_count,
-      COUNT(*) as total_count
-    FROM call_logs 
-    WHERE created_at >= CURRENT_DATE - INTERVAL $1`,
-    [`${days} days`]
-  );
+    FROM call_logs
+    ${whereClause} AND sentiment IS NOT NULL
+    GROUP BY sentiment
+    ORDER BY count DESC
+  `, params);
 
   res.json({
     success: true,
     data: {
-      totalCalls: parseInt(totalCallsResult.rows[0].count),
-      directionStats: directionStatsResult.rows,
-      statusStats: statusStatsResult.rows,
-      sentimentStats: sentimentStatsResult.rows,
-      followUpStats: followUpResult.rows[0]
+      summary: stats.rows[0],
+      sentiment: sentimentStats.rows
     }
-  });
-}));
-
-// Get calls requiring follow-up
-router.get('/follow-up/pending', asyncHandler(async (req, res) => {
-  const result = await query(
-    `SELECT 
-      cl.*,
-      c.company_name,
-      c.contact_person,
-      c.email,
-      c.phone,
-      c.mobile
-    FROM call_logs cl
-    LEFT JOIN customers c ON cl.customer_id = c.id
-    WHERE cl.follow_up_required = true
-    ORDER BY cl.created_at DESC`,
-    []
-  );
-
-  res.json({
-    success: true,
-    data: result.rows
-  });
-}));
-
-// Mark follow-up as completed
-router.put('/:id/follow-up/complete', asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  const result = await query(
-    'UPDATE call_logs SET follow_up_required = false WHERE id = $1 RETURNING *',
-    [id]
-  );
-
-  if (result.rows.length === 0) {
-    return res.status(404).json({
-      success: false,
-      error: 'Call log not found'
-    });
-  }
-
-  res.json({
-    success: true,
-    message: 'Follow-up marked as completed',
-    data: result.rows[0]
   });
 }));
 

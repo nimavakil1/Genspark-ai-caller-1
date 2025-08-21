@@ -436,30 +436,452 @@
                 </div>
             </div>
 
-            <!-- Other sections placeholder -->
+            <!-- Calls Section -->
             <div id="calls-section" class="content-section" style="display: none;">
-                <h4>Call Management</h4>
-                <p class="text-muted">Call management features coming soon...</p>
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <h4>Call Management</h4>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <button class="btn btn-primary" onclick="showAddCallModal()">
+                            <i class="fas fa-phone-plus me-2"></i>Log Call
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Call Filters -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <select class="form-select" id="callDirectionFilter">
+                                    <option value="all">All Directions</option>
+                                    <option value="inbound">Inbound</option>
+                                    <option value="outbound">Outbound</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="callStatusFilter">
+                                    <option value="all">All Status</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="missed">Missed</option>
+                                    <option value="busy">Busy</option>
+                                    <option value="no-answer">No Answer</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="date" class="form-control" id="callStartDate">
+                            </div>
+                            <div class="col-md-2">
+                                <input type="date" class="form-control" id="callEndDate">
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-primary w-100" onclick="loadCalls()">
+                                    <i class="fas fa-search me-1"></i>Search
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Call Statistics -->
+                <div class="row mb-3">
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">Total Calls</h6>
+                                        <h4 class="mb-0" id="totalCallsCount">-</h4>
+                                    </div>
+                                    <i class="fas fa-phone fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">Completed</h6>
+                                        <h4 class="mb-0" id="completedCallsCount">-</h4>
+                                    </div>
+                                    <i class="fas fa-phone-check fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">Follow-ups</h6>
+                                        <h4 class="mb-0" id="followUpCallsCount">-</h4>
+                                    </div>
+                                    <i class="fas fa-calendar-check fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">Avg Duration</h6>
+                                        <h4 class="mb-0" id="avgCallDuration">-</h4>
+                                    </div>
+                                    <i class="fas fa-clock fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calls Table -->
+                <div class="card">
+                    <div class="card-body">
+                        <div id="callsTable">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i> Loading calls...
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
+            <!-- Products Section -->
             <div id="products-section" class="content-section" style="display: none;">
-                <h4>Product Management</h4>
-                <p class="text-muted">Product management features coming soon...</p>
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <h4>Product Management</h4>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <button class="btn btn-primary" onclick="showAddProductModal()">
+                            <i class="fas fa-plus me-2"></i>Add Product
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product Filters -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" id="productSearch" placeholder="Search products...">
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select" id="categoryFilter">
+                                    <option value="all">All Categories</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select" id="activeFilter">
+                                    <option value="all">All Products</option>
+                                    <option value="true">Active Only</option>
+                                    <option value="false">Inactive</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-primary me-2" onclick="loadProducts()">
+                                    <i class="fas fa-search me-1"></i>Search
+                                </button>
+                                <button class="btn btn-outline-warning" onclick="loadLowStockProducts()">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>Low Stock
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Statistics -->
+                <div class="row mb-3">
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">Total Products</h6>
+                                        <h4 class="mb-0" id="totalProductsCount">-</h4>
+                                    </div>
+                                    <i class="fas fa-box fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">Active Products</h6>
+                                        <h4 class="mb-0" id="activeProductsCount">-</h4>
+                                    </div>
+                                    <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">Low Stock</h6>
+                                        <h4 class="mb-0" id="lowStockProductsCount">-</h4>
+                                    </div>
+                                    <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">Total Stock</h6>
+                                        <h4 class="mb-0" id="totalStockCount">-</h4>
+                                    </div>
+                                    <i class="fas fa-warehouse fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Products Table -->
+                <div class="card">
+                    <div class="card-body">
+                        <div id="productsTable">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i> Loading products...
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
+            <!-- Orders Section -->
             <div id="orders-section" class="content-section" style="display: none;">
-                <h4>Order Management</h4>
-                <p class="text-muted">Order management features coming soon...</p>
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <h4>Order Management</h4>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <button class="btn btn-primary" onclick="showCreateOrderModal()">
+                            <i class="fas fa-plus me-2"></i>Create Order
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Order Filters -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <select class="form-select" id="orderStatusFilter">
+                                    <option value="all">All Status</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="confirmed">Confirmed</option>
+                                    <option value="processing">Processing</option>
+                                    <option value="shipped">Shipped</option>
+                                    <option value="delivered">Delivered</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="date" class="form-control" id="orderStartDate">
+                            </div>
+                            <div class="col-md-2">
+                                <input type="date" class="form-control" id="orderEndDate">
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-primary w-100" onclick="loadOrders()">
+                                    <i class="fas fa-search me-1"></i>Search
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Statistics -->
+                <div class="row mb-3">
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">Total Orders</h6>
+                                        <h4 class="mb-0" id="totalOrdersCount">-</h4>
+                                    </div>
+                                    <i class="fas fa-shopping-cart fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">Pending</h6>
+                                        <h4 class="mb-0" id="pendingOrdersCount">-</h4>
+                                    </div>
+                                    <i class="fas fa-clock fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">Delivered</h6>
+                                        <h4 class="mb-0" id="deliveredOrdersCount">-</h4>
+                                    </div>
+                                    <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">Revenue</h6>
+                                        <h4 class="mb-0" id="totalRevenueMoney">-</h4>
+                                    </div>
+                                    <i class="fas fa-euro-sign fa-2x opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Orders Table -->
+                <div class="card">
+                    <div class="card-body">
+                        <div id="ordersTable">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i> Loading orders...
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
+            <!-- Analytics Section -->
             <div id="analytics-section" class="content-section" style="display: none;">
                 <h4>Analytics & Reports</h4>
-                <p class="text-muted">Analytics dashboard coming soon...</p>
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">Sales Overview</div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="text-center">
+                                            <h3 class="text-primary" id="analyticsRevenue">€0</h3>
+                                            <p class="text-muted">Total Revenue</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-center">
+                                            <h3 class="text-success" id="analyticsOrders">0</h3>
+                                            <p class="text-muted">Total Orders</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">Customer Metrics</div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="text-center">
+                                            <h3 class="text-info" id="analyticsCustomers">0</h3>
+                                            <p class="text-muted">Total Customers</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-center">
+                                            <h3 class="text-warning" id="analyticsCalls">0</h3>
+                                            <p class="text-muted">Total Calls</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
+            <!-- Settings Section -->
             <div id="settings-section" class="content-section" style="display: none;">
                 <h4>Settings</h4>
-                <p class="text-muted">System settings coming soon...</p>
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">User Profile</div>
+                            <div class="card-body">
+                                <form id="userProfileForm">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">First Name</label>
+                                                <input type="text" class="form-control" id="settingsFirstName" value="<%= user.first_name || '' %>">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Last Name</label>
+                                                <input type="text" class="form-control" id="settingsLastName" value="<%= user.last_name || '' %>">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Email</label>
+                                        <input type="email" class="form-control" id="settingsEmail" value="<%= user.email || '' %>">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Username</label>
+                                        <input type="text" class="form-control" id="settingsUsername" value="<%= user.username || '' %>" readonly>
+                                        <small class="text-muted">Username cannot be changed</small>
+                                    </div>
+                                    <button type="button" class="btn btn-primary" onclick="updateProfile()">
+                                        <i class="fas fa-save me-2"></i>Save Changes
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">Quick Actions</div>
+                            <div class="card-body">
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-primary" onclick="downloadCustomerTemplate()">
+                                        <i class="fas fa-download me-2"></i>Download Template
+                                    </button>
+                                    <button class="btn btn-outline-secondary" onclick="exportCustomers()">
+                                        <i class="fas fa-file-export me-2"></i>Export Data
+                                    </button>
+                                    <button class="btn btn-outline-info" onclick="showSystemInfo()">
+                                        <i class="fas fa-info-circle me-2"></i>System Info
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -632,6 +1054,366 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" onclick="saveCustomer()">
                         <i class="fas fa-save me-2"></i>Save Customer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Customer Modal -->
+    <div class="modal fade" id="editCustomerModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Customer</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editCustomerForm">
+                        <input type="hidden" id="editCustomerId" name="customer_id">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Company Name *</label>
+                                    <input type="text" class="form-control" name="company_name" id="editCompanyName" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Contact Person</label>
+                                    <input type="text" class="form-control" name="contact_person" id="editContactPerson">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" name="email" id="editEmail">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Phone</label>
+                                    <input type="tel" class="form-control" name="phone" id="editPhone">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Mobile</label>
+                                    <input type="tel" class="form-control" name="mobile" id="editMobile">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">VAT Number</label>
+                                    <input type="text" class="form-control" name="vat_number" id="editVatNumber">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="uses_receipt_rolls" id="editUsesReceiptRolls">
+                                <label class="form-check-label" for="editUsesReceiptRolls">
+                                    Uses Receipt Rolls
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="opt_out" id="editOptOut">
+                                <label class="form-check-label" for="editOptOut">
+                                    <span class="text-danger">Opt Out</span> - Customer cannot be contacted
+                                </label>
+                            </div>
+                        </div>
+
+                        <h6 class="mb-3">Invoice Address</h6>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label class="form-label">Street</label>
+                                    <input type="text" class="form-control" name="invoice_address_street" id="editInvoiceStreet">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Number</label>
+                                    <input type="text" class="form-control" name="invoice_address_number" id="editInvoiceNumber">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Postal Code</label>
+                                    <input type="text" class="form-control" name="invoice_address_postal_code" id="editInvoicePostalCode">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">City</label>
+                                    <input type="text" class="form-control" name="invoice_address_city" id="editInvoiceCity">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Country</label>
+                                    <input type="text" class="form-control" name="invoice_address_country" id="editInvoiceCountry">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes" id="editNotes" rows="3"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status" id="editStatus">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="updateCustomer()">
+                        <i class="fas fa-save me-2"></i>Update Customer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Call Modal -->
+    <div class="modal fade" id="addCallModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Log New Call</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addCallForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Customer</label>
+                                    <select class="form-select" name="customer_id" id="callCustomer">
+                                        <option value="">Select Customer (Optional)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Phone Number *</label>
+                                    <input type="tel" class="form-control" name="phone_number" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Direction *</label>
+                                    <select class="form-select" name="direction" required>
+                                        <option value="">Select Direction</option>
+                                        <option value="inbound">Inbound</option>
+                                        <option value="outbound">Outbound</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Status *</label>
+                                    <select class="form-select" name="status" required>
+                                        <option value="">Select Status</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="missed">Missed</option>
+                                        <option value="busy">Busy</option>
+                                        <option value="no-answer">No Answer</option>
+                                        <option value="voicemail">Voicemail</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Duration (seconds)</label>
+                                    <input type="number" class="form-control" name="duration" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Sentiment</label>
+                                    <select class="form-select" name="sentiment">
+                                        <option value="">Select Sentiment</option>
+                                        <option value="positive">Positive</option>
+                                        <option value="neutral">Neutral</option>
+                                        <option value="negative">Negative</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Recording URL</label>
+                                    <input type="url" class="form-control" name="recording_url">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="follow_up_required" id="followUpRequired">
+                                <label class="form-check-label" for="followUpRequired">
+                                    Follow-up required
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">AI Summary / Notes</label>
+                            <textarea class="form-control" name="ai_summary" rows="4" placeholder="Enter call summary or notes..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveCall()">
+                        <i class="fas fa-save me-2"></i>Save Call
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Product Modal -->
+    <div class="modal fade" id="productModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="productModalTitle">Add New Product</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="productForm">
+                        <input type="hidden" id="productId" name="product_id">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Product Name *</label>
+                                    <input type="text" class="form-control" name="name" id="productName" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Category</label>
+                                    <input type="text" class="form-control" name="category" id="productCategory" list="categoryList">
+                                    <datalist id="categoryList">
+                                        <option value="Receipt Rolls">
+                                        <option value="Thermal Rolls">
+                                        <option value="Cash Register Rolls">
+                                        <option value="Credit Card Rolls">
+                                        <option value="POS Supplies">
+                                    </datalist>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" name="description" id="productDescription" rows="3"></textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Price (€)</label>
+                                    <input type="number" class="form-control" name="price" id="productPrice" step="0.01" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Stock Quantity</label>
+                                    <input type="number" class="form-control" name="stock_quantity" id="productStock" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Min Stock Level</label>
+                                    <input type="number" class="form-control" name="min_stock_level" id="productMinStock" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 class="mb-3">Receipt Roll Specifications</h6>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label class="form-label">Width (mm)</label>
+                                    <input type="number" class="form-control" name="width_mm" id="productWidth" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label class="form-label">Diameter (mm)</label>
+                                    <input type="number" class="form-control" name="diameter_mm" id="productDiameter" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label class="form-label">Core Diameter (mm)</label>
+                                    <input type="number" class="form-control" name="core_diameter_mm" id="productCoreDiameter" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label class="form-label">Color</label>
+                                    <input type="text" class="form-control" name="color" id="productColor">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="thermal" id="productThermal">
+                                        <label class="form-check-label" for="productThermal">
+                                            Thermal Paper
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="is_active" id="productActive" checked>
+                                        <label class="form-check-label" for="productActive">
+                                            Active Product
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveProductBtn" onclick="saveProduct()">
+                        <i class="fas fa-save me-2"></i>Save Product
                     </button>
                 </div>
             </div>
@@ -834,6 +1616,18 @@
             // Load section-specific data
             if (section === 'customers') {
                 loadCustomers();
+            } else if (section === 'calls') {
+                loadCalls();
+                loadCallStats();
+            } else if (section === 'products') {
+                loadProducts();
+                loadProductStats();
+                loadProductCategories();
+            } else if (section === 'orders') {
+                loadOrders();
+                loadOrderStats();
+            } else if (section === 'analytics') {
+                loadAnalytics();
             }
         }
 
@@ -1085,9 +1879,95 @@
             link.click();
         }
 
-        // Edit customer (placeholder)
-        function editCustomer(id) {
-            showAlert('Edit customer feature coming soon', 'info');
+        // Edit customer
+        async function editCustomer(id) {
+            try {
+                // Fetch customer data
+                const response = await fetch(`/api/customers/${id}`, {
+                    headers: getAuthHeader()
+                });
+
+                if (!response.ok) throw new Error('Failed to load customer');
+
+                const result = await response.json();
+                const customer = result.data;
+
+                // Populate form with customer data
+                document.getElementById('editCustomerId').value = customer.id;
+                document.getElementById('editCompanyName').value = customer.company_name || '';
+                document.getElementById('editContactPerson').value = customer.contact_person || '';
+                document.getElementById('editEmail').value = customer.email || '';
+                document.getElementById('editPhone').value = customer.phone || '';
+                document.getElementById('editMobile').value = customer.mobile || '';
+                document.getElementById('editVatNumber').value = customer.vat_number || '';
+                document.getElementById('editUsesReceiptRolls').checked = customer.uses_receipt_rolls || false;
+                document.getElementById('editOptOut').checked = customer.opt_out || false;
+                document.getElementById('editInvoiceStreet').value = customer.invoice_address_street || '';
+                document.getElementById('editInvoiceNumber').value = customer.invoice_address_number || '';
+                document.getElementById('editInvoicePostalCode').value = customer.invoice_address_postal_code || '';
+                document.getElementById('editInvoiceCity').value = customer.invoice_address_city || '';
+                document.getElementById('editInvoiceCountry').value = customer.invoice_address_country || 'Belgium';
+                document.getElementById('editNotes').value = customer.notes || '';
+                document.getElementById('editStatus').value = customer.status || 'active';
+
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('editCustomerModal'));
+                modal.show();
+
+            } catch (error) {
+                console.error('Error loading customer for edit:', error);
+                showAlert('Failed to load customer data', 'danger');
+            }
+        }
+
+        // Update customer
+        async function updateCustomer() {
+            try {
+                const form = document.getElementById('editCustomerForm');
+                const formData = new FormData(form);
+                const customerId = formData.get('customer_id');
+                
+                const customerData = {
+                    company_name: formData.get('company_name'),
+                    contact_person: formData.get('contact_person'),
+                    email: formData.get('email'),
+                    phone: formData.get('phone'),
+                    mobile: formData.get('mobile'),
+                    vat_number: formData.get('vat_number'),
+                    uses_receipt_rolls: formData.has('uses_receipt_rolls'),
+                    opt_out: formData.has('opt_out'),
+                    invoice_address_street: formData.get('invoice_address_street'),
+                    invoice_address_number: formData.get('invoice_address_number'),
+                    invoice_address_city: formData.get('invoice_address_city'),
+                    invoice_address_postal_code: formData.get('invoice_address_postal_code'),
+                    invoice_address_country: formData.get('invoice_address_country'),
+                    notes: formData.get('notes'),
+                    status: formData.get('status')
+                };
+
+                const response = await fetch(`/api/customers/${customerId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...getAuthHeader()
+                    },
+                    body: JSON.stringify(customerData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Customer updated successfully', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('editCustomerModal')).hide();
+                    loadCustomers();
+                } else {
+                    showAlert(result.error || 'Failed to update customer', 'danger');
+                }
+
+            } catch (error) {
+                console.error('Error updating customer:', error);
+                showAlert('Failed to update customer', 'danger');
+            }
         }
 
         // Delete customer
@@ -1136,6 +2016,881 @@
         function logout() {
             localStorage.removeItem('auth_token');
             window.location.href = '/login';
+        }
+
+        // Call Management Functions
+        async function loadCalls() {
+            try {
+                const direction = document.getElementById('callDirectionFilter')?.value || 'all';
+                const status = document.getElementById('callStatusFilter')?.value || 'all';
+                const startDate = document.getElementById('callStartDate')?.value || '';
+                const endDate = document.getElementById('callEndDate')?.value || '';
+
+                const params = new URLSearchParams({
+                    page: 1,
+                    limit: 20,
+                    direction: direction,
+                    status: status,
+                    start_date: startDate,
+                    end_date: endDate
+                });
+
+                const response = await fetch(`/api/calls?${params}`, {
+                    headers: getAuthHeader()
+                });
+
+                if (!response.ok) throw new Error('Failed to load calls');
+
+                const result = await response.json();
+                displayCalls(result.data);
+
+            } catch (error) {
+                console.error('Error loading calls:', error);
+                showAlert('Failed to load calls', 'danger');
+            }
+        }
+
+        async function loadCallStats() {
+            try {
+                const response = await fetch('/api/calls/stats/summary', {
+                    headers: getAuthHeader()
+                });
+
+                if (!response.ok) throw new Error('Failed to load call stats');
+
+                const result = await response.json();
+                const stats = result.data.summary;
+
+                document.getElementById('totalCallsCount').textContent = stats.total_calls || '0';
+                document.getElementById('completedCallsCount').textContent = stats.completed_calls || '0';
+                document.getElementById('followUpCallsCount').textContent = stats.follow_up_required || '0';
+                
+                const avgDuration = stats.avg_duration ? Math.round(stats.avg_duration / 60) : 0;
+                document.getElementById('avgCallDuration').textContent = `${avgDuration}m`;
+
+            } catch (error) {
+                console.error('Error loading call stats:', error);
+            }
+        }
+
+        function displayCalls(data) {
+            const container = document.getElementById('callsTable');
+            
+            if (data.calls.length === 0) {
+                container.innerHTML = '<p class="text-muted">No calls found</p>';
+                return;
+            }
+
+            const tableHtml = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Customer</th>
+                                <th>Phone</th>
+                                <th>Direction</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                                <th>Sentiment</th>
+                                <th>Follow-up</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.calls.map(call => {
+                                const date = new Date(call.created_at).toLocaleString();
+                                const duration = call.duration ? `${Math.floor(call.duration / 60)}:${String(call.duration % 60).padStart(2, '0')}` : '-';
+                                const customer = call.company_name || 'Unknown';
+                                
+                                const directionIcon = call.direction === 'inbound' ? 'fa-phone' : 'fa-phone-volume';
+                                const directionColor = call.direction === 'inbound' ? 'text-success' : 'text-primary';
+                                
+                                const statusColor = 
+                                    call.status === 'completed' ? 'bg-success' :
+                                    call.status === 'missed' ? 'bg-danger' :
+                                    call.status === 'busy' ? 'bg-warning' : 'bg-secondary';
+
+                                const sentimentColor = 
+                                    call.sentiment === 'positive' ? 'text-success' :
+                                    call.sentiment === 'negative' ? 'text-danger' : 'text-muted';
+
+                                const optOutWarning = call.opt_out ? '<i class="fas fa-ban text-danger" title="Customer opted out"></i> ' : '';
+
+                                return `
+                                    <tr>
+                                        <td>
+                                            <small>${date}</small>
+                                        </td>
+                                        <td>
+                                            ${optOutWarning}<strong>${customer}</strong>
+                                            ${call.contact_person ? `<br><small class="text-muted">${call.contact_person}</small>` : ''}
+                                        </td>
+                                        <td>${call.phone_number}</td>
+                                        <td>
+                                            <i class="fas ${directionIcon} ${directionColor} me-1"></i>
+                                            ${call.direction}
+                                        </td>
+                                        <td>${duration}</td>
+                                        <td>
+                                            <span class="badge ${statusColor}">${call.status}</span>
+                                        </td>
+                                        <td>
+                                            ${call.sentiment ? `<span class="${sentimentColor}">${call.sentiment}</span>` : '-'}
+                                        </td>
+                                        <td>
+                                            ${call.follow_up_required ? '<i class="fas fa-flag text-warning"></i>' : '-'}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" onclick="viewCall(${call.id})" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger" onclick="deleteCall(${call.id})" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = tableHtml;
+        }
+
+        async function showAddCallModal() {
+            // Load customers for dropdown
+            try {
+                const response = await fetch('/api/customers?limit=1000', {
+                    headers: getAuthHeader()
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const customerSelect = document.getElementById('callCustomer');
+                    customerSelect.innerHTML = '<option value="">Select Customer (Optional)</option>';
+                    
+                    result.data.customers.forEach(customer => {
+                        const option = document.createElement('option');
+                        option.value = customer.id;
+                        option.textContent = `${customer.company_name}${customer.contact_person ? ' - ' + customer.contact_person : ''}`;
+                        option.dataset.phone = customer.phone || customer.mobile || '';
+                        if (customer.opt_out) {
+                            option.textContent += ' (Opted Out)';
+                            option.style.color = 'red';
+                        }
+                        customerSelect.appendChild(option);
+                    });
+
+                    // Auto-fill phone number when customer is selected
+                    customerSelect.addEventListener('change', function() {
+                        const selectedOption = this.options[this.selectedIndex];
+                        const phoneInput = document.querySelector('#addCallForm input[name="phone_number"]');
+                        if (selectedOption.dataset.phone) {
+                            phoneInput.value = selectedOption.dataset.phone;
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading customers:', error);
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('addCallModal'));
+            modal.show();
+        }
+
+        async function saveCall() {
+            try {
+                const form = document.getElementById('addCallForm');
+                const formData = new FormData(form);
+                
+                const callData = {
+                    customer_id: formData.get('customer_id') || null,
+                    phone_number: formData.get('phone_number'),
+                    direction: formData.get('direction'),
+                    duration: parseInt(formData.get('duration')) || 0,
+                    status: formData.get('status'),
+                    recording_url: formData.get('recording_url') || null,
+                    ai_summary: formData.get('ai_summary') || null,
+                    sentiment: formData.get('sentiment') || null,
+                    follow_up_required: formData.has('follow_up_required')
+                };
+
+                const response = await fetch('/api/calls', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...getAuthHeader()
+                    },
+                    body: JSON.stringify(callData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Call logged successfully', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('addCallModal')).hide();
+                    form.reset();
+                    loadCalls();
+                    loadCallStats();
+                } else {
+                    showAlert(result.error || 'Failed to log call', 'danger');
+                }
+
+            } catch (error) {
+                console.error('Error saving call:', error);
+                showAlert('Failed to log call', 'danger');
+            }
+        }
+
+        async function viewCall(id) {
+            try {
+                const response = await fetch(`/api/calls/${id}`, {
+                    headers: getAuthHeader()
+                });
+
+                if (!response.ok) throw new Error('Failed to load call');
+
+                const result = await response.json();
+                const call = result.data;
+
+                const modalHtml = `
+                    <div class="modal fade" id="viewCallModal" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Call Details</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <strong>Date/Time:</strong><br>
+                                            ${new Date(call.created_at).toLocaleString()}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Duration:</strong><br>
+                                            ${call.duration ? `${Math.floor(call.duration / 60)}:${String(call.duration % 60).padStart(2, '0')}` : 'N/A'}
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <strong>Customer:</strong><br>
+                                            ${call.company_name || 'Unknown'}
+                                            ${call.contact_person ? `<br><small>${call.contact_person}</small>` : ''}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Phone:</strong><br>
+                                            ${call.phone_number}
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <strong>Direction:</strong><br>
+                                            <span class="badge ${call.direction === 'inbound' ? 'bg-success' : 'bg-primary'}">${call.direction}</span>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Status:</strong><br>
+                                            <span class="badge bg-info">${call.status}</span>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Sentiment:</strong><br>
+                                            ${call.sentiment ? `<span class="badge bg-secondary">${call.sentiment}</span>` : 'N/A'}
+                                        </div>
+                                    </div>
+                                    ${call.follow_up_required ? '<hr><div class="alert alert-warning"><i class="fas fa-flag me-2"></i>Follow-up required</div>' : ''}
+                                    ${call.ai_summary ? `<hr><div><strong>Summary/Notes:</strong><br><p>${call.ai_summary}</p></div>` : ''}
+                                    ${call.recording_url ? `<hr><div><strong>Recording:</strong><br><a href="${call.recording_url}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fas fa-play me-2"></i>Play Recording</a></div>` : ''}
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Remove existing modal if any
+                const existingModal = document.getElementById('viewCallModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+
+                // Add modal to body
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('viewCallModal'));
+                modal.show();
+
+                // Remove modal from DOM when hidden
+                modal._element.addEventListener('hidden.bs.modal', function () {
+                    this.remove();
+                });
+
+            } catch (error) {
+                console.error('Error loading call details:', error);
+                showAlert('Failed to load call details', 'danger');
+            }
+        }
+
+        async function deleteCall(id) {
+            if (!confirm('Are you sure you want to delete this call log?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/calls/${id}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeader()
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Call deleted successfully', 'success');
+                    loadCalls();
+                    loadCallStats();
+                } else {
+                    showAlert(result.error || 'Failed to delete call', 'danger');
+                }
+
+            } catch (error) {
+                console.error('Error deleting call:', error);
+                showAlert('Failed to delete call', 'danger');
+            }
+        }
+
+        // Product Management Functions
+        async function loadProducts() {
+            try {
+                const search = document.getElementById('productSearch')?.value || '';
+                const category = document.getElementById('categoryFilter')?.value || 'all';
+                const activeOnly = document.getElementById('activeFilter')?.value || 'all';
+
+                const params = new URLSearchParams({
+                    page: 1,
+                    limit: 50,
+                    search: search,
+                    category: category,
+                    active_only: activeOnly
+                });
+
+                const response = await fetch(`/api/products?${params}`, {
+                    headers: getAuthHeader()
+                });
+
+                if (!response.ok) throw new Error('Failed to load products');
+
+                const result = await response.json();
+                displayProducts(result.data);
+
+            } catch (error) {
+                console.error('Error loading products:', error);
+                showAlert('Failed to load products', 'danger');
+            }
+        }
+
+        async function loadProductStats() {
+            try {
+                const response = await fetch('/api/products/stats/summary', {
+                    headers: getAuthHeader()
+                });
+
+                if (!response.ok) throw new Error('Failed to load product stats');
+
+                const result = await response.json();
+                const stats = result.data.summary;
+
+                document.getElementById('totalProductsCount').textContent = stats.total_products || '0';
+                document.getElementById('activeProductsCount').textContent = stats.active_products || '0';
+                document.getElementById('lowStockProductsCount').textContent = stats.low_stock_products || '0';
+                document.getElementById('totalStockCount').textContent = stats.total_stock || '0';
+
+            } catch (error) {
+                console.error('Error loading product stats:', error);
+            }
+        }
+
+        async function loadProductCategories() {
+            try {
+                const response = await fetch('/api/products/meta/categories', {
+                    headers: getAuthHeader()
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const categoryFilter = document.getElementById('categoryFilter');
+                    
+                    // Clear existing options except "All Categories"
+                    categoryFilter.innerHTML = '<option value="all">All Categories</option>';
+                    
+                    result.data.forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category;
+                        option.textContent = category;
+                        categoryFilter.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading categories:', error);
+            }
+        }
+
+        function displayProducts(data) {
+            const container = document.getElementById('productsTable');
+            
+            if (data.products.length === 0) {
+                container.innerHTML = '<p class="text-muted">No products found</p>';
+                return;
+            }
+
+            const tableHtml = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Category</th>
+                                <th>Specifications</th>
+                                <th>Price</th>
+                                <th>Stock</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.products.map(product => {
+                                const specs = [];
+                                if (product.width_mm) specs.push(`${product.width_mm}mm width`);
+                                if (product.diameter_mm) specs.push(`⌀${product.diameter_mm}mm`);
+                                if (product.thermal) specs.push('Thermal');
+                                if (product.color) specs.push(product.color);
+                                
+                                const stockStatus = product.stock_quantity <= product.min_stock_level ? 'text-danger' : 'text-success';
+                                const stockIcon = product.stock_quantity <= product.min_stock_level ? 'fas fa-exclamation-triangle' : 'fas fa-check-circle';
+                                
+                                return `
+                                    <tr>
+                                        <td>
+                                            <strong>${product.name}</strong>
+                                            ${product.description ? `<br><small class="text-muted">${product.description.substring(0, 50)}${product.description.length > 50 ? '...' : ''}</small>` : ''}
+                                        </td>
+                                        <td>${product.category || '-'}</td>
+                                        <td>
+                                            ${specs.length > 0 ? specs.join(', ') : '-'}
+                                        </td>
+                                        <td>
+                                            ${product.price ? `€${parseFloat(product.price).toFixed(2)}` : '-'}
+                                        </td>
+                                        <td>
+                                            <span class="${stockStatus}">
+                                                <i class="${stockIcon} me-1"></i>
+                                                ${product.stock_quantity || 0}
+                                            </span>
+                                            ${product.stock_quantity <= product.min_stock_level ? `<br><small class="text-muted">Min: ${product.min_stock_level}</small>` : ''}
+                                        </td>
+                                        <td>
+                                            <span class="badge ${product.is_active ? 'bg-success' : 'bg-secondary'}">
+                                                ${product.is_active ? 'Active' : 'Inactive'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" onclick="editProduct(${product.id})" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info" onclick="updateStock(${product.id}, ${product.stock_quantity})" title="Update Stock">
+                                                    <i class="fas fa-boxes"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger" onclick="deleteProduct(${product.id})" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = tableHtml;
+        }
+
+        function showAddProductModal() {
+            // Clear form
+            document.getElementById('productForm').reset();
+            document.getElementById('productId').value = '';
+            document.getElementById('productModalTitle').textContent = 'Add New Product';
+            document.getElementById('saveProductBtn').innerHTML = '<i class="fas fa-save me-2"></i>Save Product';
+            document.getElementById('productActive').checked = true;
+
+            const modal = new bootstrap.Modal(document.getElementById('productModal'));
+            modal.show();
+        }
+
+        async function editProduct(id) {
+            try {
+                const response = await fetch(`/api/products/${id}`, {
+                    headers: getAuthHeader()
+                });
+
+                if (!response.ok) throw new Error('Failed to load product');
+
+                const result = await response.json();
+                const product = result.data;
+
+                // Populate form
+                document.getElementById('productId').value = product.id;
+                document.getElementById('productName').value = product.name || '';
+                document.getElementById('productCategory').value = product.category || '';
+                document.getElementById('productDescription').value = product.description || '';
+                document.getElementById('productPrice').value = product.price || '';
+                document.getElementById('productStock').value = product.stock_quantity || 0;
+                document.getElementById('productMinStock').value = product.min_stock_level || 10;
+                document.getElementById('productWidth').value = product.width_mm || '';
+                document.getElementById('productDiameter').value = product.diameter_mm || '';
+                document.getElementById('productCoreDiameter').value = product.core_diameter_mm || '';
+                document.getElementById('productColor').value = product.color || '';
+                document.getElementById('productThermal').checked = product.thermal || false;
+                document.getElementById('productActive').checked = product.is_active !== false;
+
+                document.getElementById('productModalTitle').textContent = 'Edit Product';
+                document.getElementById('saveProductBtn').innerHTML = '<i class="fas fa-save me-2"></i>Update Product';
+
+                const modal = new bootstrap.Modal(document.getElementById('productModal'));
+                modal.show();
+
+            } catch (error) {
+                console.error('Error loading product for edit:', error);
+                showAlert('Failed to load product data', 'danger');
+            }
+        }
+
+        async function saveProduct() {
+            try {
+                const form = document.getElementById('productForm');
+                const formData = new FormData(form);
+                const productId = formData.get('product_id');
+                
+                const productData = {
+                    name: formData.get('name'),
+                    category: formData.get('category') || null,
+                    description: formData.get('description') || null,
+                    price: parseFloat(formData.get('price')) || null,
+                    stock_quantity: parseInt(formData.get('stock_quantity')) || 0,
+                    min_stock_level: parseInt(formData.get('min_stock_level')) || 10,
+                    width_mm: parseInt(formData.get('width_mm')) || null,
+                    diameter_mm: parseInt(formData.get('diameter_mm')) || null,
+                    core_diameter_mm: parseInt(formData.get('core_diameter_mm')) || null,
+                    color: formData.get('color') || null,
+                    thermal: formData.has('thermal'),
+                    is_active: formData.has('is_active')
+                };
+
+                const url = productId ? `/api/products/${productId}` : '/api/products';
+                const method = productId ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...getAuthHeader()
+                    },
+                    body: JSON.stringify(productData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert(`Product ${productId ? 'updated' : 'created'} successfully`, 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('productModal')).hide();
+                    loadProducts();
+                    loadProductStats();
+                } else {
+                    showAlert(result.error || `Failed to ${productId ? 'update' : 'create'} product`, 'danger');
+                }
+
+            } catch (error) {
+                console.error('Error saving product:', error);
+                showAlert('Failed to save product', 'danger');
+            }
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm('Are you sure you want to delete this product?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/products/${id}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeader()
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Product deleted successfully', 'success');
+                    loadProducts();
+                    loadProductStats();
+                } else {
+                    showAlert(result.error || 'Failed to delete product', 'danger');
+                }
+
+            } catch (error) {
+                console.error('Error deleting product:', error);
+                showAlert('Failed to delete product', 'danger');
+            }
+        }
+
+        function updateStock(id, currentStock) {
+            const newStock = prompt(`Current stock: ${currentStock}\nEnter new stock quantity:`, currentStock);
+            if (newStock === null) return;
+
+            const quantity = parseInt(newStock);
+            if (isNaN(quantity) || quantity < 0) {
+                showAlert('Please enter a valid stock quantity', 'warning');
+                return;
+            }
+
+            updateProductStock(id, quantity, 'set');
+        }
+
+        async function updateProductStock(id, quantity, operation = 'set') {
+            try {
+                const response = await fetch(`/api/products/${id}/stock`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...getAuthHeader()
+                    },
+                    body: JSON.stringify({ quantity, operation })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Stock updated successfully', 'success');
+                    loadProducts();
+                    loadProductStats();
+                } else {
+                    showAlert(result.error || 'Failed to update stock', 'danger');
+                }
+
+            } catch (error) {
+                console.error('Error updating stock:', error);
+                showAlert('Failed to update stock', 'danger');
+            }
+        }
+
+        async function loadLowStockProducts() {
+            try {
+                const response = await fetch('/api/products/stock/low', {
+                    headers: getAuthHeader()
+                });
+
+                if (!response.ok) throw new Error('Failed to load low stock products');
+
+                const result = await response.json();
+                
+                if (result.data.length === 0) {
+                    showAlert('No low stock products found', 'info');
+                    return;
+                }
+
+                displayProducts({ products: result.data });
+                showAlert(`Found ${result.data.length} products with low stock`, 'warning');
+
+            } catch (error) {
+                console.error('Error loading low stock products:', error);
+                showAlert('Failed to load low stock products', 'danger');
+            }
+        }
+
+        // Order Management Functions (Basic Implementation)
+        async function loadOrders() {
+            try {
+                const status = document.getElementById('orderStatusFilter')?.value || 'all';
+                const startDate = document.getElementById('orderStartDate')?.value || '';
+                const endDate = document.getElementById('orderEndDate')?.value || '';
+
+                const params = new URLSearchParams({
+                    page: 1,
+                    limit: 20,
+                    status: status,
+                    start_date: startDate,
+                    end_date: endDate
+                });
+
+                const response = await fetch(`/api/orders?${params}`, {
+                    headers: getAuthHeader()
+                });
+
+                if (!response.ok) throw new Error('Failed to load orders');
+
+                const result = await response.json();
+                displayOrders(result.data);
+
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                document.getElementById('ordersTable').innerHTML = '<p class="text-muted">Failed to load orders</p>';
+            }
+        }
+
+        async function loadOrderStats() {
+            try {
+                const response = await fetch('/api/orders/stats/summary', {
+                    headers: getAuthHeader()
+                });
+
+                if (!response.ok) throw new Error('Failed to load order stats');
+
+                const result = await response.json();
+                const stats = result.data.summary;
+
+                document.getElementById('totalOrdersCount').textContent = stats.total_orders || '0';
+                document.getElementById('pendingOrdersCount').textContent = stats.pending_orders || '0';
+                document.getElementById('deliveredOrdersCount').textContent = stats.delivered_orders || '0';
+                document.getElementById('totalRevenueMoney').textContent = stats.total_revenue ? `€${parseFloat(stats.total_revenue).toFixed(0)}` : '€0';
+
+            } catch (error) {
+                console.error('Error loading order stats:', error);
+            }
+        }
+
+        function displayOrders(data) {
+            const container = document.getElementById('ordersTable');
+            
+            if (data.orders.length === 0) {
+                container.innerHTML = '<p class="text-muted">No orders found</p>';
+                return;
+            }
+
+            const tableHtml = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Items</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.orders.map(order => {
+                                const statusColors = {
+                                    pending: 'bg-warning',
+                                    confirmed: 'bg-info',
+                                    processing: 'bg-primary',
+                                    shipped: 'bg-success',
+                                    delivered: 'bg-success',
+                                    cancelled: 'bg-danger'
+                                };
+
+                                return `
+                                    <tr>
+                                        <td><strong>${order.order_number}</strong></td>
+                                        <td>
+                                            ${order.company_name || 'N/A'}
+                                            ${order.contact_person ? `<br><small>${order.contact_person}</small>` : ''}
+                                        </td>
+                                        <td>${order.item_count} item(s)</td>
+                                        <td>€${parseFloat(order.total_amount || 0).toFixed(2)}</td>
+                                        <td>
+                                            <span class="badge ${statusColors[order.status] || 'bg-secondary'}">${order.status}</span>
+                                        </td>
+                                        <td>${new Date(order.created_at).toLocaleDateString()}</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" onclick="viewOrder(${order.id})" title="View">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-success" onclick="updateOrderStatus(${order.id}, '${order.status}')" title="Update Status">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = tableHtml;
+        }
+
+        function showCreateOrderModal() {
+            showAlert('Create Order feature will be implemented in next update', 'info');
+        }
+
+        function viewOrder(id) {
+            showAlert('View Order details will be implemented in next update', 'info');
+        }
+
+        function updateOrderStatus(id, currentStatus) {
+            const statuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+            const newStatus = prompt(`Current status: ${currentStatus}\nEnter new status (${statuses.join(', ')}):`, currentStatus);
+            
+            if (newStatus && statuses.includes(newStatus)) {
+                // Implementation would go here
+                showAlert('Order status update will be implemented in next update', 'info');
+            }
+        }
+
+        // Settings Functions
+        function updateProfile() {
+            showAlert('Profile update functionality will be implemented in next update', 'info');
+        }
+
+        function showSystemInfo() {
+            showAlert('System: AI Sales CRM v1.0\nFeatures: Customer Management, Call Logging, Product Management, Order Management', 'info');
+        }
+
+        // Analytics Functions
+        async function loadAnalytics() {
+            try {
+                // Load basic analytics data
+                const [customersRes, ordersRes, callsRes] = await Promise.all([
+                    fetch('/api/dashboard/stats', { headers: getAuthHeader() }),
+                    fetch('/api/orders/stats/summary', { headers: getAuthHeader() }),
+                    fetch('/api/calls/stats/summary', { headers: getAuthHeader() })
+                ]);
+
+                if (customersRes.ok) {
+                    const customerData = await customersRes.json();
+                    document.getElementById('analyticsCustomers').textContent = customerData.data.overview.totalCustomers || '0';
+                }
+
+                if (ordersRes.ok) {
+                    const orderData = await ordersRes.json();
+                    const stats = orderData.data.summary;
+                    document.getElementById('analyticsRevenue').textContent = stats.total_revenue ? `€${parseFloat(stats.total_revenue).toFixed(0)}` : '€0';
+                    document.getElementById('analyticsOrders').textContent = stats.total_orders || '0';
+                }
+
+                if (callsRes.ok) {
+                    const callData = await callsRes.json();
+                    document.getElementById('analyticsCalls').textContent = callData.data.summary.total_calls || '0';
+                }
+
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+            }
         }
 
         // Utility functions
