@@ -1008,6 +1008,31 @@
                             </div>
                         </div>
 
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Invoice Language</label>
+                                    <select class="form-control" name="invoice_language_code">
+                                        <option value="FR">French (FR)</option>
+                                        <option value="NL">Dutch (NL)</option>
+                                        <option value="DE">German (DE)</option>
+                                        <option value="EN">English (EN)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check mt-4">
+                                        <input class="form-check-input" type="checkbox" name="invoice_language_confirmed" id="invoiceLanguageConfirmed">
+                                        <label class="form-check-label" for="invoiceLanguageConfirmed">
+                                            <i class="fas fa-check-circle text-success me-1"></i>Language Confirmed with Customer
+                                        </label>
+                                        <small class="form-text text-muted d-block">Check this if customer has confirmed their preferred language</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" name="delivery_same_as_invoice" id="deliverySameAsInvoice" checked>
@@ -1179,6 +1204,31 @@
                                 <div class="mb-3">
                                     <label class="form-label">Country</label>
                                     <input type="text" class="form-control" name="invoice_address_country" id="editInvoiceCountry">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Invoice Language</label>
+                                    <select class="form-control" name="invoice_language_code" id="editInvoiceLanguageCode">
+                                        <option value="FR">French (FR)</option>
+                                        <option value="NL">Dutch (NL)</option>
+                                        <option value="DE">German (DE)</option>
+                                        <option value="EN">English (EN)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check mt-4">
+                                        <input class="form-check-input" type="checkbox" name="invoice_language_confirmed" id="editInvoiceLanguageConfirmed">
+                                        <label class="form-check-label" for="editInvoiceLanguageConfirmed">
+                                            <i class="fas fa-check-circle text-success me-1"></i>Language Confirmed with Customer
+                                        </label>
+                                        <small class="form-text text-muted d-block">Check this if customer has confirmed their preferred language</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1502,6 +1552,31 @@
                                     <div class="mb-3">
                                         <label class="form-label">Country</label>
                                         <input type="text" class="form-control" id="deliveryCountry" name="country" value="Belgium">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Delivery Language</label>
+                                        <select class="form-control" id="deliveryLanguageCode" name="language_code">
+                                            <option value="FR">French (FR)</option>
+                                            <option value="NL">Dutch (NL)</option>
+                                            <option value="DE">German (DE)</option>
+                                            <option value="EN">English (EN)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <div class="form-check mt-4">
+                                            <input class="form-check-input" type="checkbox" id="deliveryLanguageConfirmed" name="language_confirmed">
+                                            <label class="form-check-label" for="deliveryLanguageConfirmed">
+                                                <i class="fas fa-check-circle text-success me-1"></i>Language Confirmed with Customer
+                                            </label>
+                                            <small class="form-text text-muted d-block">Check this if customer has confirmed their preferred language</small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1834,6 +1909,7 @@
                                 <th>Receipt Rolls</th>
                                 <th>Opt Out</th>
                                 <th>City</th>
+                                <th>Language</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -1864,6 +1940,11 @@
                                         </span>
                                     </td>
                                     <td>${customer.invoice_address_city || '-'}</td>
+                                    <td>
+                                        <span class="badge ${customer.invoice_language_confirmed ? 'bg-success' : 'bg-warning'}">
+                                            <i class="fas fa-language me-1"></i>${customer.invoice_language_code || 'FR'}${customer.invoice_language_confirmed ? ' ✓' : ' ?'}
+                                        </span>
+                                    </td>
                                     <td>
                                         <span class="badge ${customer.status === 'active' ? 'bg-success' : 'bg-secondary'}">
                                             ${customer.status}
@@ -1942,6 +2023,8 @@
                     invoice_address_city: formData.get('invoice_address_city'),
                     invoice_address_postal_code: formData.get('invoice_address_postal_code'),
                     invoice_address_country: formData.get('invoice_address_country'),
+                    invoice_language_code: formData.get('invoice_language_code'),
+                    invoice_language_confirmed: formData.has('invoice_language_confirmed'),
                     delivery_same_as_invoice: formData.has('delivery_same_as_invoice'),
                     notes: formData.get('notes')
                 };
@@ -2063,6 +2146,8 @@
                 document.getElementById('editInvoicePostalCode').value = customer.invoice_address_postal_code || '';
                 document.getElementById('editInvoiceCity').value = customer.invoice_address_city || '';
                 document.getElementById('editInvoiceCountry').value = customer.invoice_address_country || 'Belgium';
+                document.getElementById('editInvoiceLanguageCode').value = customer.invoice_language_code || 'FR';
+                document.getElementById('editInvoiceLanguageConfirmed').checked = customer.invoice_language_confirmed || false;
                 document.getElementById('editNotes').value = customer.notes || '';
                 document.getElementById('editStatus').value = customer.status || 'active';
 
@@ -2097,6 +2182,8 @@
                     invoice_address_city: formData.get('invoice_address_city'),
                     invoice_address_postal_code: formData.get('invoice_address_postal_code'),
                     invoice_address_country: formData.get('invoice_address_country'),
+                    invoice_language_code: formData.get('invoice_language_code'),
+                    invoice_language_confirmed: formData.has('invoice_language_confirmed'),
                     notes: formData.get('notes'),
                     status: formData.get('status')
                 };
@@ -2208,6 +2295,9 @@
                                         ${address.address_name}
                                         ${address.is_primary ? '<span class="badge bg-primary ms-2">Primary</span>' : ''}
                                         ${address.can_place_orders ? '<span class="badge bg-success ms-2">Can Order</span>' : '<span class="badge bg-secondary ms-2">Centralized Orders</span>'}
+                                        <span class="badge ${address.language_confirmed ? 'bg-success' : 'bg-warning'} ms-2">
+                                            <i class="fas fa-language me-1"></i>${address.language_code || 'FR'}${address.language_confirmed ? ' ✓' : ' ?'}
+                                        </span>
                                     </h6>
                                     <p class="card-text mb-2">
                                         <i class="fas fa-map-marker-alt me-2"></i>
@@ -2282,6 +2372,8 @@
                 document.getElementById('deliveryCity').value = address.city || '';
                 document.getElementById('deliveryPostalCode').value = address.postal_code || '';
                 document.getElementById('deliveryCountry').value = address.country || '';
+                document.getElementById('deliveryLanguageCode').value = address.language_code || 'FR';
+                document.getElementById('deliveryLanguageConfirmed').checked = address.language_confirmed || false;
                 document.getElementById('deliveryContactPhone').value = address.contact_phone || '';
                 document.getElementById('deliveryContactEmail').value = address.contact_email || '';
                 document.getElementById('deliveryNotes').value = address.notes || '';
@@ -2313,6 +2405,8 @@
                     city: formData.get('city'),
                     postal_code: formData.get('postal_code'),
                     country: formData.get('country'),
+                    language_code: formData.get('language_code'),
+                    language_confirmed: formData.has('language_confirmed'),
                     contact_phone: formData.get('contact_phone'),
                     contact_email: formData.get('contact_email'),
                     notes: formData.get('notes'),
