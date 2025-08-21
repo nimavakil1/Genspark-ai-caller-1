@@ -161,6 +161,7 @@ router.post('/', asyncHandler(async (req, res) => {
     mobile,
     vat_number,
     uses_receipt_rolls = false,
+    opt_out = false,
     invoice_address_street,
     invoice_address_number,
     invoice_address_city,
@@ -185,14 +186,14 @@ router.post('/', asyncHandler(async (req, res) => {
     const customerResult = await client.query(
       `INSERT INTO customers (
         company_name, contact_person, email, phone, mobile, vat_number,
-        uses_receipt_rolls, invoice_address_street, invoice_address_number,
+        uses_receipt_rolls, opt_out, invoice_address_street, invoice_address_number,
         invoice_address_city, invoice_address_postal_code, invoice_address_country,
         delivery_same_as_invoice, notes, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *`,
       [
         company_name, contact_person, email, phone, mobile, vat_number,
-        uses_receipt_rolls, invoice_address_street, invoice_address_number,
+        uses_receipt_rolls, opt_out, invoice_address_street, invoice_address_number,
         invoice_address_city, invoice_address_postal_code, invoice_address_country,
         delivery_same_as_invoice, notes, status
       ]
@@ -237,6 +238,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
     mobile,
     vat_number,
     uses_receipt_rolls,
+    opt_out,
     invoice_address_street,
     invoice_address_number,
     invoice_address_city,
@@ -259,20 +261,21 @@ router.put('/:id', asyncHandler(async (req, res) => {
         mobile = COALESCE($5, mobile),
         vat_number = COALESCE($6, vat_number),
         uses_receipt_rolls = COALESCE($7, uses_receipt_rolls),
-        invoice_address_street = COALESCE($8, invoice_address_street),
-        invoice_address_number = COALESCE($9, invoice_address_number),
-        invoice_address_city = COALESCE($10, invoice_address_city),
-        invoice_address_postal_code = COALESCE($11, invoice_address_postal_code),
-        invoice_address_country = COALESCE($12, invoice_address_country),
-        delivery_same_as_invoice = COALESCE($13, delivery_same_as_invoice),
-        notes = COALESCE($14, notes),
-        status = COALESCE($15, status),
+        opt_out = COALESCE($8, opt_out),
+        invoice_address_street = COALESCE($9, invoice_address_street),
+        invoice_address_number = COALESCE($10, invoice_address_number),
+        invoice_address_city = COALESCE($11, invoice_address_city),
+        invoice_address_postal_code = COALESCE($12, invoice_address_postal_code),
+        invoice_address_country = COALESCE($13, invoice_address_country),
+        delivery_same_as_invoice = COALESCE($14, delivery_same_as_invoice),
+        notes = COALESCE($15, notes),
+        status = COALESCE($16, status),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $16
+      WHERE id = $17
       RETURNING *`,
       [
         company_name, contact_person, email, phone, mobile, vat_number,
-        uses_receipt_rolls, invoice_address_street, invoice_address_number,
+        uses_receipt_rolls, opt_out, invoice_address_street, invoice_address_number,
         invoice_address_city, invoice_address_postal_code, invoice_address_country,
         delivery_same_as_invoice, notes, status, id
       ]

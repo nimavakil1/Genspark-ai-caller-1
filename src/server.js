@@ -18,6 +18,7 @@ const customerRoutes = require('../routes/customers');
 const dashboardRoutes = require('../routes/dashboard');
 const callRoutes = require('../routes/calls');
 const productRoutes = require('../routes/products');
+const orderRoutes = require('../routes/orders');
 
 const app = express();
 const server = http.createServer(app);
@@ -79,6 +80,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/calls', callRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
 
 // Main dashboard route (protected)
 app.get('/', auth.authenticateToken, (req, res) => {
