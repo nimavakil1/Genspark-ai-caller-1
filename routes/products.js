@@ -93,7 +93,6 @@ router.post('/', asyncHandler(async (req, res) => {
     name,
     description,
     sku,
-    shopify_product_id,
     is_active = true
   } = req.body;
 
@@ -114,10 +113,10 @@ router.post('/', asyncHandler(async (req, res) => {
 
   const result = await query(
     `INSERT INTO products (
-      name, description, sku, shopify_product_id, is_active
-    ) VALUES ($1, $2, $3, $4, $5)
+      name, description, sku, is_active
+    ) VALUES ($1, $2, $3, $4)
     RETURNING *`,
-    [name, description, sku, shopify_product_id, is_active]
+    [name, description, sku, is_active]
   );
 
   res.status(201).json({
@@ -134,7 +133,6 @@ router.put('/:id', asyncHandler(async (req, res) => {
     name,
     description,
     sku,
-    shopify_product_id,
     is_active
   } = req.body;
 
@@ -143,12 +141,11 @@ router.put('/:id', asyncHandler(async (req, res) => {
       name = COALESCE($1, name),
       description = COALESCE($2, description),
       sku = COALESCE($3, sku),
-      shopify_product_id = COALESCE($4, shopify_product_id),
-      is_active = COALESCE($5, is_active),
+      is_active = COALESCE($4, is_active),
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $6
+    WHERE id = $5
     RETURNING *`,
-    [name, description, sku, shopify_product_id, is_active, id]
+    [name, description, sku, is_active, id]
   );
 
   if (result.rows.length === 0) {

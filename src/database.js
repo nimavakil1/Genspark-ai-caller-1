@@ -124,7 +124,6 @@ const initializeDatabase = async () => {
         price DECIMAL(10,2),
         currency VARCHAR(3) DEFAULT 'EUR',
         stock_quantity INTEGER DEFAULT 0,
-        shopify_product_id VARCHAR(50),
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

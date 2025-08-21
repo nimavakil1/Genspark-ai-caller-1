@@ -662,13 +662,9 @@
             <!-- Orders Section -->
             <div id="orders-section" class="content-section" style="display: none;">
                 <div class="row mb-3">
-                    <div class="col-md-8">
+                    <div class="col-md-12">
                         <h4>Order Management</h4>
-                    </div>
-                    <div class="col-md-4 text-end">
-                        <button class="btn btn-primary" onclick="showCreateOrderModal()">
-                            <i class="fas fa-plus me-2"></i>Create Order
-                        </button>
+                        <p class="text-muted">Orders are automatically synced from Shopify</p>
                     </div>
                 </div>
 
@@ -853,6 +849,27 @@
                                     </div>
                                     <button type="button" class="btn btn-primary" onclick="updateProfile()">
                                         <i class="fas fa-save me-2"></i>Save Changes
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <!-- Change Password Card -->
+                        <div class="card mt-4">
+                            <div class="card-header">Change Password</div>
+                            <div class="card-body">
+                                <form id="changePasswordForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">New Password *</label>
+                                        <input type="password" class="form-control" id="newPassword" required minlength="6">
+                                        <small class="text-muted">Password must be at least 6 characters long</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Confirm New Password *</label>
+                                        <input type="password" class="form-control" id="confirmPassword" required minlength="6">
+                                    </div>
+                                    <button type="button" class="btn btn-warning" onclick="changePassword()">
+                                        <i class="fas fa-key me-2"></i>Change Password
                                     </button>
                                 </form>
                             </div>
@@ -1343,23 +1360,12 @@
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Shopify Product ID</label>
-                                    <input type="text" class="form-control" name="shopify_product_id" id="productShopifyId" placeholder="Optional">
-                                    <small class="form-text text-muted">Link to Shopify product for sync</small>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <div class="form-check mt-4">
-                                        <input class="form-check-input" type="checkbox" name="is_active" id="productActive" checked>
-                                        <label class="form-check-label" for="productActive">
-                                            Active Product
-                                        </label>
-                                    </div>
-                                </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="productActive" checked>
+                                <label class="form-check-label" for="productActive">
+                                    Active Product
+                                </label>
                             </div>
                         </div>
                     </form>
@@ -2405,7 +2411,6 @@
                                         </td>
                                         <td>
                                             <code>${product.sku || 'N/A'}</code>
-                                            ${product.shopify_product_id ? `<br><small class="text-muted">Shopify: ${product.shopify_product_id}</small>` : ''}
                                         </td>
                                         <td>
                                             <strong>${product.price ? `€${parseFloat(product.price).toFixed(2)}` : '-'}</strong>
@@ -2481,7 +2486,7 @@
                 document.getElementById('productDescription').value = product.description || '';
                 document.getElementById('productPrice').value = product.price || '';
                 document.getElementById('productStock').value = product.stock_quantity || 0;
-                document.getElementById('productShopifyId').value = product.shopify_product_id || '';
+
                 document.getElementById('productActive').checked = product.is_active !== false;
 
                 document.getElementById('productModalTitle').textContent = 'Edit Product';
@@ -2506,7 +2511,6 @@
                     name: formData.get('name'),
                     sku: formData.get('sku'),
                     description: formData.get('description') || null,
-                    shopify_product_id: formData.get('shopify_product_id') || null,
                     is_active: formData.has('is_active')
                 };
 
@@ -2738,9 +2742,7 @@
             container.innerHTML = tableHtml;
         }
 
-        function showCreateOrderModal() {
-            showAlert('Create Order feature will be implemented in next update', 'info');
-        }
+        // NOTE: Order creation removed - orders are synced from Shopify
 
         function viewOrder(id) {
             showAlert('View Order details will be implemented in next update', 'info');
@@ -2759,6 +2761,51 @@
         // Settings Functions
         function updateProfile() {
             showAlert('Profile update functionality will be implemented in next update', 'info');
+        }
+
+        async function changePassword() {
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (!newPassword || !confirmPassword) {
+                showAlert('Please fill in all password fields', 'error');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                showAlert('Password must be at least 6 characters long', 'error');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                showAlert('Passwords do not match', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/change-password', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...getAuthHeader()
+                    },
+                    body: JSON.stringify({
+                        newPassword: newPassword
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('Password changed successfully', 'success');
+                    document.getElementById('changePasswordForm').reset();
+                } else {
+                    showAlert(data.error || 'Failed to change password', 'error');
+                }
+            } catch (error) {
+                console.error('Error changing password:', error);
+                showAlert('Error changing password', 'error');
+            }
         }
 
         function showSystemInfo() {

@@ -144,39 +144,21 @@ router.post('/logout', authenticateToken, (req, res) => {
   });
 });
 
-// Change password
+// Change password (simplified - no current password required)
 router.put('/change-password', authenticateToken, asyncHandler(async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
+  const { newPassword } = req.body;
 
-  if (!currentPassword || !newPassword) {
+  if (!newPassword) {
     return res.status(400).json({ 
       success: false, 
-      error: 'Current password and new password are required' 
+      error: 'New password is required' 
     });
   }
 
   if (newPassword.length < 6) {
     return res.status(400).json({ 
       success: false, 
-      error: 'New password must be at least 6 characters long' 
-    });
-  }
-
-  // Get current user with password
-  const result = await query(
-    'SELECT password_hash FROM admin_users WHERE id = $1',
-    [req.user.id]
-  );
-
-  const user = result.rows[0];
-
-  // Verify current password
-  const isValidPassword = await comparePassword(currentPassword, user.password_hash);
-
-  if (!isValidPassword) {
-    return res.status(401).json({ 
-      success: false, 
-      error: 'Current password is incorrect' 
+      error: 'Password must be at least 6 characters long' 
     });
   }
 
