@@ -51,10 +51,19 @@ try:
     
     # Check for the fixed environment variable
     env_vars = config['services']['livekit']['environment']
+    livekit_keys_found = False
+    livekit_config_found = False
+    
     for env_var in env_vars:
         if 'LIVEKIT_KEYS=devkey: secret' in env_var:
-            print('Environment variable formatting is correct')
-            break
+            livekit_keys_found = True
+        if 'LIVEKIT_CONFIG=' in env_var:
+            livekit_config_found = True
+            
+    if livekit_keys_found and not livekit_config_found:
+        print('Environment variable formatting is correct (LIVEKIT_CONFIG removed to fix parsing error)')
+    elif livekit_config_found:
+        print('WARNING: LIVEKIT_CONFIG found - this may cause parsing errors')
     else:
         print('WARNING: LIVEKIT_KEYS format may be incorrect')
         
