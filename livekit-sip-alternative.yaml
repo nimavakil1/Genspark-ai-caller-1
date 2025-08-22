@@ -1,0 +1,30 @@
+# Alternative LiveKit Configuration for SIP
+# This version tries different SIP configuration approaches
+
+port: 7880
+
+# RTC configuration
+rtc:
+  udp_port: 7882
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 60000
+  use_external_ip: true
+
+# Redis configuration (required for SIP)
+redis:
+  address: redis:6379
+
+# API Keys with longer secret to satisfy security requirements
+keys:
+  # Using longer secret to avoid the "secret is too short" warning
+  devkey: "very_long_secret_key_for_development_use_only_change_in_production_32_chars_minimum"
+
+# Logging
+logging:
+  level: debug  # Increased to debug level to see SIP initialization
+  json: false
+
+# SIP configuration - trying minimal approach
+# Note: Some LiveKit versions auto-enable SIP when Redis is present
+# This section might not be needed or might need different format
