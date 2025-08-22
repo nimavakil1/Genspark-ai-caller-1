@@ -10,6 +10,14 @@ rtc:
 redis:
   address: redis:6379
 
+sip:
+  # Enable SIP functionality
+  enabled: true
+  # SIP port (default is 5060, but we'll use 7880 for simplicity)
+  port: 5060
+  # External IP will be detected automatically or set manually
+  # external_ip: "YOUR_SERVER_IP"  # Uncomment and set your server's public IP
+
 keys:
   devkey: secret
 

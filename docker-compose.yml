@@ -17,6 +17,8 @@ services:
     ports:
       - "7880:7880"
       - "7881:7881/udp"
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
     environment:
       - "LIVEKIT_KEYS=devkey: secret"
     volumes:
