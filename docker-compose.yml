@@ -19,21 +19,13 @@ services:
       - "7881:7881/udp"
     environment:
       - LIVEKIT_CONFIG=/etc/livekit.yaml
+    environment:
+      - LIVEKIT_KEYS=devkey: secret
     volumes:
       - ./livekit-simple.yaml:/etc/livekit.yaml
     restart: unless-stopped
 
-  ai-agent:
-    image: livekit/agents:latest
-    container_name: ai-sales-agent
-    environment:
-      - LIVEKIT_URL=ws://livekit:7880
-      - LIVEKIT_API_KEY=your_livekit_api_key
-      - LIVEKIT_API_SECRET=your_livekit_api_secret
-    depends_on:
-      - livekit
-      - redis
-    restart: unless-stopped
+# AI agent removed - using invalid image
 
 volumes:
   redis_data:
