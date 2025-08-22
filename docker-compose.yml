@@ -20,7 +20,7 @@ services:
     environment:
       - LIVEKIT_CONFIG=/etc/livekit.yaml
     volumes:
-      - ./livekit.yaml:/etc/livekit.yaml
+      - ./livekit-simple.yaml:/etc/livekit.yaml
     restart: unless-stopped
 
   ai-agent:
