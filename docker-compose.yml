@@ -19,7 +19,7 @@ services:
       - "7881:7881/udp"
     environment:
       - LIVEKIT_CONFIG=/etc/livekit.yaml
-      - LIVEKIT_KEYS=devkey: secret
+      - "LIVEKIT_KEYS=devkey: secret"
     volumes:
       - ./livekit-simple.yaml:/etc/livekit.yaml
     restart: unless-stopped
