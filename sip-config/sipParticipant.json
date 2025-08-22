@@ -1,0 +1,7 @@
+{
+  "sip_trunk_id": "<REPLACE_WITH_OUTBOUND_TRUNK_ID>",
+  "sip_call_to": "+32479202020",
+  "room_name": "ai-sales-call",
+  "participant_identity": "ai-sales-agent",
+  "participant_name": "AI Sales Agent"
+}

@@ -1,0 +1,10 @@
+{
+  "name": "AI Sales Dispatch Rule",
+  "trunk_ids": ["<REPLACE_WITH_TRUNK_ID>"],
+  "rule": {
+    "dispatchRuleDirect": {
+      "roomName": "ai-sales-call",
+      "pin": ""
+    }
+  }
+}
