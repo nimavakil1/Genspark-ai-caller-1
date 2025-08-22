@@ -21,8 +21,8 @@ webhook:
 
 sip:
   inbound_numbers:
-    - "+1234567890"  # Your Telnyx number will go here
-  outbound_number: "+1234567890"  # Your Telnyx number
+    - "+3226010500"  # Your Telnyx number
+  outbound_number: "+3226010500"  # Your Telnyx number
   trunk_configs:
     - name: "telnyx"
       address: "sip.telnyx.com"
