@@ -9,7 +9,10 @@
     "build": "echo 'No build process needed for Node.js'",
     "test": "echo 'No tests specified' && exit 0",
     "db:migrate": "node scripts/migrate.js",
-    "db:seed": "node scripts/seed.js"
+    "db:seed": "node scripts/seed.js",
+    "telnyx:start": "node telnyxVoiceIntegration.js",
+    "telnyx:test": "node test-telnyx.js",
+    "telnyx:health": "curl http://localhost:3000/api/telnyx-voice/health"
   },
   "keywords": [
     "ai",
