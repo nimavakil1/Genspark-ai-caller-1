@@ -25,11 +25,11 @@ const upload = multer({
   }
 });
 
-// Apply authentication to all customer routes
-router.use(authenticateToken);
+// Note: Authentication is applied per route as needed
+// Template downloads are public, other operations require authentication
 
 // Get all customers with pagination and search
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', authenticateToken, asyncHandler(async (req, res) => {
   const { 
     page = 1, 
     limit = 10, 
@@ -111,7 +111,7 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 // Get single customer by ID
-router.get('/:id', asyncHandler(async (req, res) => {
+router.get('/:id', authenticateToken, asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const result = await query(
@@ -152,7 +152,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 }));
 
 // Create new customer
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', authenticateToken, asyncHandler(async (req, res) => {
   const {
     company_name,
     contact_person,
@@ -230,7 +230,7 @@ router.post('/', asyncHandler(async (req, res) => {
 }));
 
 // Update customer
-router.put('/:id', asyncHandler(async (req, res) => {
+router.put('/:id', authenticateToken, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const {
     company_name,
@@ -324,7 +324,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
 }));
 
 // Delete customer
-router.delete('/:id', asyncHandler(async (req, res) => {
+router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const result = await query(
@@ -345,36 +345,10 @@ router.delete('/:id', asyncHandler(async (req, res) => {
   });
 }));
 
-// Download CSV template
-router.get('/download/template', (req, res) => {
-  const csvData = [
-    [
-      'company_name', 'contact_person', 'email', 'phone', 'mobile', 'vat_number',
-      'uses_receipt_rolls', 'invoice_address_street', 'invoice_address_number',
-      'invoice_address_city', 'invoice_address_postal_code', 'invoice_address_country',
-      'invoice_language_code', 'invoice_language_confirmed', 'delivery_same_as_invoice', 'notes', 'status'
-    ],
-    [
-      'Example Company BVBA', 'Jan Janssen', 'jan@example.be', '+32 2 123 45 67', 
-      '+32 476 12 34 56', 'BE0123456789', 'true', 'Kerkstraat', '123',
-      'Brussel', '1000', 'Belgium', 'NL', 'true', 'false', 'Important customer', 'active'
-    ]
-  ];
 
-  stringify(csvData, {
-    delimiter: ';', // European CSV format
-    header: false
-  }, (err, output) => {
-    if (err) throw err;
-    
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="customers_template.csv"');
-    res.send(output);
-  });
-});
 
 // Upload CSV file
-router.post('/upload/csv', upload.single('csvFile'), asyncHandler(async (req, res) => {
+router.post('/upload/csv', authenticateToken, upload.single('csvFile'), asyncHandler(async (req, res) => {
   if (!req.file) {
     return res.status(400).json({
       success: false,
@@ -461,7 +435,7 @@ router.post('/upload/csv', upload.single('csvFile'), asyncHandler(async (req, re
 }));
 
 // Export customers to CSV
-router.get('/export/csv', asyncHandler(async (req, res) => {
+router.get('/export/csv', authenticateToken, asyncHandler(async (req, res) => {
   const result = await query(
     `SELECT 
       company_name, contact_person, email, phone, mobile, vat_number,
@@ -501,7 +475,7 @@ router.get('/export/csv', asyncHandler(async (req, res) => {
 }));
 
 // Import delivery addresses from CSV
-router.post('/delivery-addresses/import/csv', upload.single('csvFile'), asyncHandler(async (req, res) => {
+router.post('/delivery-addresses/import/csv', authenticateToken, upload.single('csvFile'), asyncHandler(async (req, res) => {
   if (!req.file) {
     return res.status(400).json({
       success: false,
@@ -630,7 +604,7 @@ router.post('/delivery-addresses/import/csv', upload.single('csvFile'), asyncHan
 }));
 
 // Export delivery addresses to CSV
-router.get('/delivery-addresses/export/csv', asyncHandler(async (req, res) => {
+router.get('/delivery-addresses/export/csv', authenticateToken, asyncHandler(async (req, res) => {
   const result = await query(
     `SELECT 
       c.company_name as customer_company_name,
@@ -667,39 +641,12 @@ router.get('/delivery-addresses/export/csv', asyncHandler(async (req, res) => {
   });
 }));
 
-// Download delivery addresses CSV template
-router.get('/delivery-addresses/template/csv', (req, res) => {
-  const templateData = [
-    [
-      'customer_company_name', 'address_name', 'street', 'number', 'city', 'postal_code', 'country',
-      'language_code', 'language_confirmed', 'is_primary', 'can_place_orders', 'contact_person', 'contact_phone', 'contact_email', 'notes'
-    ],
-    [
-      'Example Company Ltd', 'Main Warehouse', 'Industrial Street', '123', 'Brussels', '1000', 'Belgium',
-      'FR', 'true', 'true', 'false', 'John Doe', '+32123456789', 'john@example.com', 'Main delivery location - French confirmed'
-    ],
-    [
-      'Example Company Ltd', 'Store Branch 1', 'Commercial Ave', '456', 'Antwerp', '2000', 'Belgium',
-      'NL', 'false', 'false', 'true', 'Jane Smith', '+32987654321', 'jane@example.com', 'Can place orders independently - Dutch not confirmed'
-    ]
-  ];
 
-  stringify(templateData, {
-    delimiter: ';', // European CSV format
-    header: false
-  }, (err, output) => {
-    if (err) throw err;
-    
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="delivery_addresses_template.csv"');
-    res.send(output);
-  });
-});
 
 // ==================== DELIVERY ADDRESS MANAGEMENT ====================
 
 // Get all delivery addresses for a customer
-router.get('/:customerId/delivery-addresses', asyncHandler(async (req, res) => {
+router.get('/:customerId/delivery-addresses', authenticateToken, asyncHandler(async (req, res) => {
   const { customerId } = req.params;
 
   const result = await query(
@@ -718,7 +665,7 @@ router.get('/:customerId/delivery-addresses', asyncHandler(async (req, res) => {
 }));
 
 // Add new delivery address for a customer
-router.post('/:customerId/delivery-addresses', asyncHandler(async (req, res) => {
+router.post('/:customerId/delivery-addresses', authenticateToken, asyncHandler(async (req, res) => {
   const { customerId } = req.params;
   const {
     address_name,
@@ -773,7 +720,7 @@ router.post('/:customerId/delivery-addresses', asyncHandler(async (req, res) => 
 }));
 
 // Update delivery address
-router.put('/delivery-addresses/:addressId', asyncHandler(async (req, res) => {
+router.put('/delivery-addresses/:addressId', authenticateToken, asyncHandler(async (req, res) => {
   const { addressId } = req.params;
   const {
     address_name,
@@ -844,7 +791,7 @@ router.put('/delivery-addresses/:addressId', asyncHandler(async (req, res) => {
 }));
 
 // Delete delivery address (soft delete)
-router.delete('/delivery-addresses/:addressId', asyncHandler(async (req, res) => {
+router.delete('/delivery-addresses/:addressId', authenticateToken, asyncHandler(async (req, res) => {
   const { addressId } = req.params;
 
   // Check if this is the primary address

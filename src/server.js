@@ -66,6 +66,64 @@ app.set('views', path.join(__dirname, '../views'));
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Public CSV template routes (no authentication)
+const { stringify } = require('csv-stringify');
+
+app.get('/api/customers/download/template', (req, res) => {
+  const csvData = [
+    [
+      'company_name', 'contact_person', 'email', 'phone', 'mobile', 'vat_number',
+      'uses_receipt_rolls', 'invoice_address_street', 'invoice_address_number',
+      'invoice_address_city', 'invoice_address_postal_code', 'invoice_address_country',
+      'invoice_language_code', 'invoice_language_confirmed', 'delivery_same_as_invoice', 'notes', 'status'
+    ],
+    [
+      'Example Company BVBA', 'Jan Janssen', 'jan@example.be', '+32 2 123 45 67', 
+      '+32 476 12 34 56', 'BE0123456789', 'true', 'Kerkstraat', '123',
+      'Brussel', '1000', 'Belgium', 'NL', 'true', 'false', 'Important customer', 'active'
+    ]
+  ];
+
+  stringify(csvData, {
+    delimiter: ';', // European CSV format
+    header: false
+  }, (err, output) => {
+    if (err) throw err;
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="customers_template.csv"');
+    res.send(output);
+  });
+});
+
+app.get('/api/customers/delivery-addresses/template/csv', (req, res) => {
+  const templateData = [
+    [
+      'customer_company_name', 'address_name', 'street', 'number', 'city', 'postal_code', 'country',
+      'language_code', 'language_confirmed', 'is_primary', 'can_place_orders', 'contact_person', 'contact_phone', 'contact_email', 'notes'
+    ],
+    [
+      'Example Company Ltd', 'Main Warehouse', 'Industrial Street', '123', 'Brussels', '1000', 'Belgium',
+      'FR', 'true', 'true', 'false', 'John Doe', '+32123456789', 'john@example.com', 'Main delivery location - French confirmed'
+    ],
+    [
+      'Example Company Ltd', 'Store Branch 1', 'Commercial Ave', '456', 'Antwerp', '2000', 'Belgium',
+      'NL', 'false', 'false', 'true', 'Jane Smith', '+32987654321', 'jane@example.com', 'Can place orders independently - Dutch not confirmed'
+    ]
+  ];
+
+  stringify(templateData, {
+    delimiter: ';', // European CSV format
+    header: false
+  }, (err, output) => {
+    if (err) throw err;
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="delivery_addresses_template.csv"');
+    res.send(output);
+  });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', customerRoutes);
