@@ -56,7 +56,7 @@ class TelnyxVoiceIntegration {
             console.log('✅ Telnyx Voice Integration is ready!');
             console.log('📞 Ready to handle incoming calls via webhooks');
             console.log('🔗 Make sure your webhook URL is configured in Telnyx Portal:');
-            console.log(`   ${process.env.SERVER_BASE_URL || 'http://your-server.com'}/api/telnyx/webhooks/call-events`);
+            console.log(`   ${process.env.SERVER_BASE_URL || 'http://your-server.com'}/api/telnyx-voice/webhooks/call-events`);
             console.log('');
             console.log('🧪 Test outbound calling with: node -e "require(\'./telnyxVoiceIntegration\').testCall()"');
             console.log('');

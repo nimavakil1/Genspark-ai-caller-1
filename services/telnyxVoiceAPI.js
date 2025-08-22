@@ -36,7 +36,7 @@ class TelnyxVoiceAPIService extends EventEmitter {
                 to: to,
                 from: from,
                 connection_id: process.env.TELNYX_CONNECTION_ID, // We'll need this
-                webhook_url: `${process.env.SERVER_BASE_URL || 'http://localhost:3000'}/api/telnyx/webhooks/call-events`,
+                webhook_url: `${process.env.SERVER_BASE_URL || 'http://localhost:3000'}/api/telnyx-voice/webhooks/call-events`,
                 webhook_url_method: 'POST',
                 media_encryption: 'disabled',
                 record: 'record-from-start', // Enable call recording
@@ -65,7 +65,7 @@ class TelnyxVoiceAPIService extends EventEmitter {
             console.log(`📞 Answering call: ${callControlId}`);
             
             const response = await this.client.post(`/calls/${callControlId}/actions/answer`, {
-                webhook_url: `${process.env.SERVER_BASE_URL || 'http://localhost:3000'}/api/telnyx/webhooks/call-events`
+                webhook_url: `${process.env.SERVER_BASE_URL || 'http://localhost:3000'}/api/telnyx-voice/webhooks/call-events`
             });
             
             console.log('✅ Call answered');
