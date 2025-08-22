@@ -45,8 +45,8 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
 
   // Search filter
   if (search) {
-    whereClause += ` AND (company_name ILIKE $${params.length + 1} OR contact_person ILIKE $${params.length + 1} OR email ILIKE $${params.length + 1})`;
-    params.push(`%${search}%`);
+    whereClause += ` AND (company_name ILIKE $${params.length + 1} OR contact_person ILIKE $${params.length + 2} OR email ILIKE $${params.length + 3})`;
+    params.push(`%${search}%`, `%${search}%`, `%${search}%`);
   }
 
   // Status filter
