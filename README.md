@@ -41,11 +41,16 @@
 - Call logging system (ready for AI integration)
 - Product management system
 - Order management foundation
-- Docker Compose setup for Redis and LiveKit
+- Docker Compose setup for Redis and LiveKit (YAML syntax fixed)
+- Telnyx API integration routes for outbound calling
+- LiveKit SIP configuration files for inbound/outbound trunks
+- Automated setup script following official Telnyx documentation
 - Comprehensive error handling and logging
 
 ## Features Pending ⏳
-- LiveKit + Telnyx SIP integration for AI calling
+- LiveKit SIP trunk creation and testing (Docker Compose ready)
+- Complete Telnyx Portal configuration (SIP Connection setup)
+- AI voice agent integration for automated calling
 - Shopify API integration for product sync
 - Brevo integration for WhatsApp/email automation
 - N8N workflow automation setup
@@ -100,7 +105,7 @@ npm run db:migrate
 npm run db:seed
 
 # 7. Start Redis and LiveKit services
-docker-compose up -d
+docker-compose up -d redis livekit
 
 # 8. Start the application
 npm start
@@ -110,6 +115,34 @@ npm run dev
 # 9. Access the application
 # Open browser to http://your-server-ip:3000
 # Login with: admin / admin123
+
+## Telnyx + LiveKit SIP Integration Setup
+
+**CURRENT STATUS**: ✅ Docker Compose YAML fixed, ready for SIP trunk creation
+
+### Quick Start for SIP Integration
+
+```bash
+# 1. Ensure Docker services are running
+sudo docker compose up -d redis livekit
+
+# 2. Run the automated setup script
+chmod +x setup-telnyx-livekit.sh
+./setup-telnyx-livekit.sh
+
+# 3. Complete manual Telnyx Portal configuration (see script output)
+# 4. Test the integration
+```
+
+### Configuration Files Ready:
+- ✅ `docker-compose.yml` - LiveKit + Redis orchestration (syntax fixed)
+- ✅ `livekit-simple.yaml` - LiveKit configuration with Redis
+- ✅ `sip-config/inboundTrunk.json` - Inbound SIP trunk config
+- ✅ `sip-config/outboundTrunk.json` - Outbound SIP trunk config
+- ✅ `sip-config/dispatchRule.json` - Call routing configuration
+- ✅ `sip-config/sipParticipant.json` - Test call configuration
+- ✅ `routes/telnyx.js` - Complete API integration routes
+- ✅ `setup-telnyx-livekit.sh` - Automated setup following official docs
 ```
 
 ### Update from GitHub
