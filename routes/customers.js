@@ -45,25 +45,25 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
 
   // Search filter
   if (search) {
-    whereClause += ` AND (company_name ILIKE $${params.length + 1} OR contact_person ILIKE $${params.length + 2} OR email ILIKE $${params.length + 3})`;
+    whereClause += ` AND (c.company_name ILIKE $${params.length + 1} OR c.contact_person ILIKE $${params.length + 2} OR c.email ILIKE $${params.length + 3})`;
     params.push(`%${search}%`, `%${search}%`, `%${search}%`);
   }
 
   // Status filter
   if (status !== 'all') {
-    whereClause += ` AND status = $${params.length + 1}`;
+    whereClause += ` AND c.status = $${params.length + 1}`;
     params.push(status);
   }
 
   // Receipt rolls filter
   if (uses_receipt_rolls !== 'all') {
-    whereClause += ` AND uses_receipt_rolls = $${params.length + 1}`;
+    whereClause += ` AND c.uses_receipt_rolls = $${params.length + 1}`;
     params.push(uses_receipt_rolls === 'true');
   }
 
   // Get total count
   const countResult = await query(
-    `SELECT COUNT(*) FROM customers ${whereClause}`,
+    `SELECT COUNT(*) FROM customers c ${whereClause}`,
     params
   );
   const totalCustomers = parseInt(countResult.rows[0].count);
