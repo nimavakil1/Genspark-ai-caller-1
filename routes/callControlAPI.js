@@ -36,11 +36,37 @@ router.post('/test-call', asyncHandler(async (req, res) => {
   }
 
   try {
+    // Find or create customer for test call
+    let customerId = null;
+    const testCustomerName = customer_name || 'Test Customer';
+    
+    const existingCustomer = await query(
+      'SELECT id FROM customers WHERE phone = $1',
+      [to]
+    );
+    
+    if (existingCustomer.rows.length > 0) {
+      customerId = existingCustomer.rows[0].id;
+    } else {
+      const customerResult = await query(
+        'INSERT INTO customers (company_name, phone) VALUES ($1, $2) RETURNING id',
+        [testCustomerName, to]
+      );
+      customerId = customerResult.rows[0].id;
+    }
+
     const customerData = {
-      customer_name: customer_name || 'Test Customer'
+      customer_id: customerId,
+      customer_name: testCustomerName
     };
 
     const call = await callControlService.makeOutboundCall(to, null, customerData);
+    
+    // Log the test call
+    await query(
+      'INSERT INTO call_logs (customer_id, phone_number, direction, status, created_at) VALUES ($1, $2, $3, $4, NOW())',
+      [customerId, to, 'outbound', 'initiated']
+    );
     
     res.json({
       success: true,
@@ -48,6 +74,7 @@ router.post('/test-call', asyncHandler(async (req, res) => {
       call_control_id: call.call_control_id,
       to: to,
       from: process.env.TELNYX_PHONE_NUMBER,
+      customer_id: customerId,
       note: 'Call will be answered automatically and AI conversation will begin'
     });
 
@@ -103,12 +130,12 @@ router.post('/outbound-call', authenticateToken, asyncHandler(async (req, res) =
     const call = await callControlService.makeOutboundCall(phone_number, from_number, customerData);
 
     const callRecord = await query(`
-      INSERT INTO calls (
-        customer_id, phone_number, call_control_id, direction, status, started_at
-      ) VALUES ($1, $2, $3, $4, $5, NOW())
+      INSERT INTO call_logs (
+        customer_id, phone_number, direction, status, created_at
+      ) VALUES ($1, $2, $3, $4, NOW())
       RETURNING *
     `, [
-      customer_id || null, phone_number, call.call_control_id, 'outbound', 'initiated'
+      customer_id || null, phone_number, 'outbound', 'initiated'
     ]);
 
     res.json({
@@ -142,17 +169,44 @@ router.post('/webhooks', asyncHandler(async (req, res) => {
   });
 
   try {
+    // Find or create customer based on phone number
+    let customerId = null;
+    const customerName = payload?.customer_name;
+    
+    if (customerName && to) {
+      const existingCustomer = await query(
+        'SELECT id FROM customers WHERE phone = $1',
+        [to]
+      );
+      
+      if (existingCustomer.rows.length > 0) {
+        customerId = existingCustomer.rows[0].id;
+      } else {
+        const customerResult = await query(
+          'INSERT INTO customers (company_name, phone) VALUES ($1, $2) RETURNING id',
+          [customerName, to]
+        );
+        customerId = customerResult.rows[0].id;
+      }
+    }
+
     switch (event_type) {
       case 'call.initiated':
         console.log(`📞 Outbound call initiated: ${call_control_id}`);
+        
+        // Insert call log for initiated call
+        await query(
+          'INSERT INTO call_logs (customer_id, phone_number, direction, status, created_at) VALUES ($1, $2, $3, $4, NOW())',
+          [customerId, to, 'outbound', 'initiated']
+        );
         break;
 
       case 'call.answered':
         console.log(`✅ Outbound call answered: ${call_control_id}`);
         
         await query(
-          'UPDATE calls SET status = $1, answered_at = NOW() WHERE call_control_id = $2',
-          ['answered', call_control_id]
+          'UPDATE call_logs SET status = $1 WHERE phone_number = $2 AND status = $3 AND created_at >= NOW() - INTERVAL \'1 hour\'',
+          ['answered', to, 'initiated']
         );
         
         const callInfo = callControlService.getCallInfo(call_control_id);
@@ -163,8 +217,8 @@ router.post('/webhooks', asyncHandler(async (req, res) => {
         console.log(`📴 Call ended: ${call_control_id}`);
         
         await query(
-          'UPDATE calls SET status = $1, ended_at = NOW() WHERE call_control_id = $2',
-          ['completed', call_control_id]
+          'UPDATE call_logs SET status = $1 WHERE phone_number = $2 AND status IN ($3, $4) AND created_at >= NOW() - INTERVAL \'1 hour\'',
+          ['completed', to, 'initiated', 'answered']
         );
         break;
 
@@ -227,7 +281,7 @@ async function handleGatherResult(callControlId, digits) {
         );
         
         await query(
-          'UPDATE customers SET opt_out = true WHERE id = (SELECT customer_id FROM calls WHERE call_control_id = $1)',
+          'UPDATE customers SET opt_out = true WHERE id = (SELECT customer_id FROM call_logs WHERE phone_number = (SELECT phone_number FROM call_logs WHERE id = $1 LIMIT 1))',
           [callControlId]
         );
         
