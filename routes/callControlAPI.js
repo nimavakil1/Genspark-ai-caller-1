@@ -162,10 +162,13 @@ router.post('/outbound-call', authenticateToken, asyncHandler(async (req, res) =
 
 // Webhook endpoint for Call Control events
 router.post('/webhooks', asyncHandler(async (req, res) => {
-  const { event_type, call_control_id, from, to, direction, payload } = req.body;
+  // Telnyx sends webhook data in req.body.data format
+  const webhookData = req.body.data || req.body;
+  const { event_type, call_control_id, from, to, direction, payload } = webhookData;
 
   console.log('📞 Call Control Webhook received:', {
-    event_type, call_control_id, from, to, direction
+    event_type, call_control_id, from, to, direction,
+    raw_body: JSON.stringify(req.body, null, 2)
   });
 
   try {
