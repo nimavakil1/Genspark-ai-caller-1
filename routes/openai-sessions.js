@@ -168,6 +168,76 @@ router.delete('/:sessionId', async (req, res) => {
 });
 
 /**
+ * POST /api/openai-sessions/voice-test
+ * Create OpenAI session for browser voice testing
+ */
+router.post('/voice-test', async (req, res) => {
+    try {
+        const { agentId, scenario = 'standard', customerData = {} } = req.body;
+        
+        if (!agentId) {
+            return res.status(400).json({
+                error: 'Agent ID is required for voice testing'
+            });
+        }
+        
+        console.log(`🎤 Starting voice test with agent: ${agentId}, scenario: ${scenario}`);
+        
+        // Get agent data
+        const { pool } = require('../src/database');
+        const agentResult = await pool.query(`
+            SELECT a.*, 
+                   array_agg(
+                       json_build_object(
+                           'id', ak.id,
+                           'title', ak.title,
+                           'content', ak.content
+                       )
+                   ) FILTER (WHERE ak.id IS NOT NULL) as knowledge
+            FROM agents a
+            LEFT JOIN agent_knowledge ak ON a.id = ak.agent_id
+            WHERE a.id = $1
+            GROUP BY a.id
+        `, [agentId]);
+        
+        if (agentResult.rows.length === 0) {
+            return res.status(404).json({
+                error: 'Agent not found'
+            });
+        }
+        
+        const agentData = agentResult.rows[0];
+        const voiceTestCallId = `voice-test-${Date.now()}`;
+        
+        // Create OpenAI session for voice testing
+        const session = await openaiService.createRealtimeSession(
+            voiceTestCallId,
+            agentData,
+            {
+                customer_name: customerData.customer_name || 'Voice Test Customer',
+                phone: 'voice-test',
+                scenario: scenario
+            }
+        );
+        
+        res.json({
+            success: true,
+            sessionId: session.sessionId,
+            agentName: agentData.name,
+            scenario: scenario,
+            instructions: session.instructions?.substring(0, 200) + '...'
+        });
+        
+    } catch (error) {
+        console.error('❌ Error creating voice test session:', error);
+        res.status(500).json({
+            error: 'Failed to create voice test session',
+            details: error.message
+        });
+    }
+});
+
+/**
  * POST /api/openai-sessions/test
  * Test OpenAI session creation and conversation
  */
