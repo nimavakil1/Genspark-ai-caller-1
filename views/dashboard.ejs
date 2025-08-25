@@ -2056,7 +2056,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" id="startTestButton" class="btn btn-primary" onclick="initiateTest()">
+                    <button type="button" id="startTestButton" class="btn btn-primary" onclick="event.preventDefault(); initiateTest();">
                         <i class="fas fa-microphone me-2"></i>Start Voice Test
                     </button>
                 </div>
@@ -4516,29 +4516,59 @@
 
         // Test Mode Switching
         document.addEventListener('DOMContentLoaded', function() {
-            const testModeRadios = document.querySelectorName('testMode');
+            const testModeRadios = document.querySelectorAll('input[name="testMode"]');
             testModeRadios.forEach(radio => {
                 radio.addEventListener('change', updateTestMode);
             });
             updateTestMode(); // Set initial state
+            
+            // Setup voice test button event handler
+            const startVoiceTestBtn = document.getElementById('startVoiceTest');
+            if (startVoiceTestBtn) {
+                startVoiceTestBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    startVoiceTest();
+                });
+            }
+            
+            // Setup end voice test button event handler
+            const endVoiceTestBtn = document.getElementById('endVoiceTest');
+            if (endVoiceTestBtn) {
+                endVoiceTestBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    endVoiceTest();
+                });
+            }
         });
 
         function updateTestMode() {
-            const voiceMode = document.getElementById('voiceTestMode').checked;
+            const voiceMode = document.getElementById('voiceTestMode')?.checked;
             const phoneSection = document.getElementById('phoneTestSection');
             const voiceSection = document.getElementById('voiceTestSection');
             const startButton = document.getElementById('startTestButton');
 
             if (voiceMode) {
-                phoneSection.style.display = 'none';
-                voiceSection.style.display = 'block';
-                startButton.innerHTML = '<i class="fas fa-microphone me-2"></i>Start Voice Test';
-                startButton.onclick = startVoiceTest;
+                if (phoneSection) phoneSection.style.display = 'none';
+                if (voiceSection) voiceSection.style.display = 'block';
+                if (startButton) {
+                    startButton.innerHTML = '<i class="fas fa-microphone me-2"></i>Start Voice Test';
+                    // Remove old onclick and set new one with preventDefault
+                    startButton.onclick = function(e) {
+                        e.preventDefault();
+                        startVoiceTest();
+                    };
+                }
             } else {
-                phoneSection.style.display = 'block';
-                voiceSection.style.display = 'none';
-                startButton.innerHTML = '<i class="fas fa-phone me-2"></i>Start Phone Test';
-                startButton.onclick = initiateTestCall;
+                if (phoneSection) phoneSection.style.display = 'block';
+                if (voiceSection) voiceSection.style.display = 'none';
+                if (startButton) {
+                    startButton.innerHTML = '<i class="fas fa-phone me-2"></i>Start Phone Test';
+                    // Remove old onclick and set new one with preventDefault
+                    startButton.onclick = function(e) {
+                        e.preventDefault();
+                        initiateTestCall();
+                    };
+                }
             }
         }
 
