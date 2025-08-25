@@ -15,7 +15,7 @@
 - **Real-time**: Socket.IO for live updates
 - **Authentication**: JWT with bcryptjs
 - **File Upload**: Multer with CSV parsing
-- **AI Integration**: LiveKit + Telnyx SIP (pending implementation)
+- **AI Integration**: LiveKit + Telnyx SIP + OpenAI Realtime API
 - **European Standards**: Semicolon-separated CSV, comma decimal separator
 
 ## Data Architecture
@@ -29,6 +29,8 @@
   - `delivery_addresses` (multi-address support)
   - `whatsapp_messages` (Brevo integration ready)
   - `sync_logs` (Shopify integration ready)
+  - `agents` (AI agent management with custom prompts)
+  - `agent_knowledge` (Knowledge base for AI agents)
 
 ## Features Completed ✅
 - Complete PostgreSQL database schema with European business requirements
@@ -46,11 +48,16 @@
 - LiveKit SIP configuration files for inbound/outbound trunks
 - Automated setup script following official Telnyx documentation
 - Comprehensive error handling and logging
+- **AI Agent Management System** with custom prompts and knowledge bases
+- **OpenAI Realtime API Integration** for intelligent voice conversations
+- **LiveKit + OpenAI Integration** for real-time audio processing and AI responses
+- Real-time agent session monitoring in dashboard
+- WebSocket-based OpenAI conversation handling
 
 ## Features Pending ⏳
 - LiveKit SIP trunk creation and testing (Docker Compose ready)
 - Complete Telnyx Portal configuration (SIP Connection setup)
-- AI voice agent integration for automated calling
+- Production OpenAI API key configuration for live conversations
 - Shopify API integration for product sync
 - Brevo integration for WhatsApp/email automation
 - N8N workflow automation setup
@@ -66,9 +73,11 @@
    - Support for separate invoice and delivery addresses
    - European format CSV import/export
    - Filter by receipt roll usage
-4. **Call Management**: Log and track customer calls (AI integration pending)
-5. **Product Management**: Manage receipt roll inventory
-6. **Orders**: Track sales and order fulfillment
+4. **Call Management**: Log and track customer calls with AI integration
+5. **AI Agents**: Create and manage AI agents with custom prompts and knowledge bases
+6. **Intelligent Calling**: Test AI agents with real-time conversation monitoring
+7. **Product Management**: Manage receipt roll inventory
+8. **Orders**: Track sales and order fulfillment
 
 ## Installation & Deployment
 
@@ -195,6 +204,9 @@ LIVEKIT_API_SECRET=your_livekit_api_secret
 # Telnyx (for SIP integration)
 TELNYX_API_KEY=your_telnyx_api_key
 
+# OpenAI (for AI conversations)
+OPENAI_API_KEY=your_openai_api_key
+
 # Shopify (for future integration)
 SHOPIFY_API_KEY=your_shopify_api_key
 SHOPIFY_API_SECRET=your_shopify_api_secret
@@ -222,10 +234,52 @@ BREVO_API_KEY=your_brevo_api_key
 - **Tech Stack**: Node.js + PostgreSQL + Docker + Nginx (production)
 - **Last Updated**: 2024-01-20
 
+## OpenAI Realtime API Integration 🧠
+
+**STATUS**: ✅ Fully Integrated - Ready for production with valid API key
+
+### Features
+- **Real-time AI Conversations**: WebSocket-based connection to OpenAI Realtime API
+- **Agent Management**: Create AI agents with custom system prompts and knowledge bases
+- **Dynamic Instructions**: Build conversation context from agent prompts and customer data
+- **Session Monitoring**: Real-time dashboard monitoring of AI conversations
+- **Conversation History**: Track and store conversation messages and responses
+- **Error Handling**: Robust error handling for WebSocket connections and API responses
+
+### AI Agent System
+- **Custom Prompts**: Define system instructions for each AI agent
+- **Knowledge Base**: Attach product information and company knowledge to agents
+- **Voice Settings**: Configure voice characteristics for different agents
+- **Test Conversations**: Test agent responses with simulated conversations
+
+### API Endpoints
+- `GET /api/openai-sessions` - List all active OpenAI sessions
+- `GET /api/openai-sessions/:callControlId` - Get specific session details
+- `GET /api/openai-sessions/:callControlId/conversation` - Get conversation history
+- `POST /api/openai-sessions/:callControlId/message` - Send message to AI session
+- `POST /api/openai-sessions/test` - Test AI agent conversation
+- `DELETE /api/openai-sessions/:sessionId` - End AI session
+
+### Integration Flow
+1. **Agent Test Call**: Dashboard initiates test call with selected agent
+2. **OpenAI Session Creation**: Creates real-time WebSocket connection to OpenAI
+3. **System Instructions**: Builds context from agent prompt + knowledge base + customer data
+4. **Live Monitoring**: Dashboard shows both LiveKit and OpenAI session status
+5. **Conversation Tracking**: All messages and responses stored and monitored
+6. **Session Cleanup**: Automatic cleanup of resources when call ends
+
+### Dashboard Features
+- **Dual Session Monitoring**: Track both LiveKit (audio) and OpenAI (AI) sessions
+- **Real-time Status Updates**: Live updates of session status and message counts
+- **Agent Configuration**: Create and manage AI agents with custom settings
+- **Knowledge Management**: Attach and manage knowledge base content for agents
+- **Test Interface**: Test AI agents with simulated conversations
+
 ## Next Development Priorities
 1. Complete LiveKit + Telnyx integration for AI calling
-2. Implement Shopify product synchronization
-3. Set up Brevo WhatsApp/email automation
-4. Deploy N8N workflow automation
-5. Add advanced analytics and reporting
-6. Production deployment with SSL certificates
+2. Configure production OpenAI API key for live conversations
+3. Implement Shopify product synchronization
+4. Set up Brevo WhatsApp/email automation
+5. Deploy N8N workflow automation
+6. Add advanced analytics and reporting
+7. Production deployment with SSL certificates

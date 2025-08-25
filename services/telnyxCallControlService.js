@@ -1,6 +1,7 @@
 const axios = require('axios');
 const EventEmitter = require('events');
 const LiveKitAgentService = require('./livekitAgentService');
+const OpenAIRealtimeService = require('./openaiRealtimeService');
 
 class TelnyxCallControlService extends EventEmitter {
     constructor(options = {}) {
@@ -14,6 +15,7 @@ class TelnyxCallControlService extends EventEmitter {
         
         this.activeCalls = new Map();
         this.livekitService = new LiveKitAgentService();
+        this.openaiService = new OpenAIRealtimeService();
         this.setupAxios();
     }
     
@@ -163,6 +165,16 @@ class TelnyxCallControlService extends EventEmitter {
                 }
             }
             
+            // Cleanup OpenAI session if it exists
+            if (callData?.openaiSession) {
+                try {
+                    await this.openaiService.endSession(callData.openaiSession.sessionId);
+                    console.log(`🧠 OpenAI Realtime session cleaned up for call: ${callControlId}`);
+                } catch (openaiError) {
+                    console.warn('⚠️ Error cleaning up OpenAI session:', openaiError.message);
+                }
+            }
+            
             // Remove from active calls
             this.activeCalls.delete(callControlId);
             
@@ -208,9 +220,25 @@ class TelnyxCallControlService extends EventEmitter {
                 // Generate welcome message from agent prompt and knowledge
                 welcomeText = await this.generateAgentWelcomeMessage(agentData, customerData);
                 
-                // Start LiveKit agent conversation for real-time interaction
+                // Start OpenAI Realtime session for intelligent conversation
+                let openaiSession = null;
                 try {
-                    const livekitSession = await this.livekitService.startAgentConversation(
+                    openaiSession = await this.openaiService.createRealtimeSession(
+                        callControlId,
+                        agentData,
+                        customerData
+                    );
+                    
+                    console.log(`🧠 OpenAI Realtime session created: ${openaiSession.sessionId}`);
+                    
+                } catch (openaiError) {
+                    console.warn('⚠️ OpenAI Realtime session creation failed:', openaiError.message);
+                }
+                
+                // Start LiveKit agent conversation for real-time interaction
+                let livekitSession = null;
+                try {
+                    livekitSession = await this.livekitService.startAgentConversation(
                         callControlId, 
                         agentData, 
                         customerData
@@ -218,29 +246,85 @@ class TelnyxCallControlService extends EventEmitter {
                     
                     console.log(`🎯 LiveKit agent session started: ${livekitSession.roomName}`);
                     
-                    // Store LiveKit session info in call data
-                    const callData = this.activeCalls.get(callControlId);
-                    if (callData) {
-                        callData.livekitSession = livekitSession;
+                } catch (livekitError) {
+                    console.warn('⚠️ LiveKit integration failed:', livekitError.message);
+                }
+                
+                // Store session info in call data
+                const callData = this.activeCalls.get(callControlId);
+                if (callData) {
+                    if (livekitSession) callData.livekitSession = livekitSession;
+                    if (openaiSession) callData.openaiSession = openaiSession;
+                }
+                
+                // If we have OpenAI session, use it for intelligent welcome message
+                if (openaiSession) {
+                    try {
+                        // Send initial message to OpenAI to generate personalized welcome
+                        const initialPrompt = `The call has been answered. Generate a personalized, professional welcome message for ${customerData.customer_name || 'the customer'}. Keep it concise and engaging.`;
+                        
+                        const welcomeResponse = await this.openaiService.sendMessage(
+                            openaiSession.sessionId,
+                            'user',
+                            initialPrompt
+                        );
+                        
+                        if (welcomeResponse && welcomeResponse.content) {
+                            welcomeText = welcomeResponse.content;
+                            console.log(`🧠 Using OpenAI generated welcome: ${welcomeText.substring(0, 100)}...`);
+                        }
+                        
+                    } catch (openaiError) {
+                        console.warn('⚠️ Error generating OpenAI welcome message:', openaiError.message);
                     }
-                    
-                    // For now, still use TTS for initial message, but LiveKit is ready for real-time conversation
-                    await this.speakText(callControlId, welcomeText + ' I can now have a natural conversation with you using advanced AI technology.', voice, language);
-                    
-                    // Skip DTMF gathering - agent can handle natural conversation
-                    console.log(`🗣️ Agent conversation mode: Natural speech enabled for ${agentData.name}`);
+                }
+                
+                // Speak the welcome message
+                await this.speakText(callControlId, welcomeText, voice, language);
+                
+                // If we have both OpenAI and LiveKit, enable full AI conversation mode
+                if (openaiSession && livekitSession) {
+                    console.log(`🤖🎯 Full AI conversation mode enabled: OpenAI + LiveKit for ${agentData.name}`);
                     
                     return { 
                         success: true, 
-                        message: 'AI conversation started with agent configuration and LiveKit integration',
+                        message: 'AI conversation started with OpenAI Realtime and LiveKit integration',
+                        openai: {
+                            sessionId: openaiSession.sessionId,
+                            status: 'active'
+                        },
                         livekit: {
                             roomName: livekitSession.roomName,
                             agentActive: true
                         }
                     };
                     
-                } catch (livekitError) {
-                    console.warn('⚠️ LiveKit integration failed, falling back to basic TTS:', livekitError.message);
+                } else if (openaiSession) {
+                    console.log(`🧠 OpenAI conversation mode enabled for ${agentData.name}`);
+                    
+                    return {
+                        success: true,
+                        message: 'AI conversation started with OpenAI Realtime integration',
+                        openai: {
+                            sessionId: openaiSession.sessionId,
+                            status: 'active'
+                        }
+                    };
+                    
+                } else if (livekitSession) {
+                    console.log(`🎯 LiveKit conversation mode enabled for ${agentData.name}`);
+                    
+                    return {
+                        success: true,
+                        message: 'AI conversation started with LiveKit integration',
+                        livekit: {
+                            roomName: livekitSession.roomName,
+                            agentActive: true
+                        }
+                    };
+                    
+                } else {
+                    console.warn('⚠️ Both OpenAI and LiveKit failed, falling back to basic TTS');
                     
                     // Fallback to basic TTS + DTMF flow
                     await this.speakText(callControlId, welcomeText, voice, language);
@@ -298,9 +382,6 @@ class TelnyxCallControlService extends EventEmitter {
      */
     async generateAgentWelcomeMessage(agentData, customerData = {}) {
         try {
-            // For now, create a simple welcome message based on agent description
-            // TODO: Integrate with OpenAI to generate dynamic messages from system prompt
-            
             const agentName = agentData.name || 'AI Assistant';
             const description = agentData.description || 'helping with your business needs';
             
@@ -328,6 +409,77 @@ class TelnyxCallControlService extends EventEmitter {
             console.error('❌ Error generating agent welcome message:', error);
             // Fallback to default message
             return `Hello! Thank you for answering. This is an AI assistant from the receipt roll company. I'm calling to tell you about our high-quality thermal receipt rolls. Is now a good time to talk?`;
+        }
+    }
+    
+    /**
+     * Handle ongoing conversation with OpenAI integration
+     */
+    async handleConversationMessage(callControlId, userMessage, messageType = 'speech') {
+        try {
+            const callData = this.getCallInfo(callControlId);
+            
+            if (!callData?.openaiSession) {
+                console.warn('⚠️ No OpenAI session found for conversation handling');
+                return null;
+            }
+            
+            console.log(`💬 Processing ${messageType} message for call: ${callControlId}`);
+            
+            // Send user message to OpenAI
+            const aiResponse = await this.openaiService.sendMessage(
+                callData.openaiSession.sessionId,
+                'user',
+                userMessage
+            );
+            
+            if (aiResponse && aiResponse.content) {
+                // Get agent voice settings
+                const agentData = callData.agentData;
+                const voiceSettings = agentData?.voice_settings || {};
+                const voice = this.mapAgentVoiceToTelnyx(voiceSettings.voice || 'alloy');
+                const language = voiceSettings.language || 'en';
+                
+                // Speak AI response
+                await this.speakText(callControlId, aiResponse.content, voice, language);
+                
+                console.log(`🤖 AI responded: ${aiResponse.content.substring(0, 100)}...`);
+                
+                return aiResponse;
+            }
+            
+            return null;
+            
+        } catch (error) {
+            console.error('❌ Error handling conversation message:', error);
+            return null;
+        }
+    }
+    
+    /**
+     * Get OpenAI session info for a call
+     */
+    getOpenAISession(callControlId) {
+        const callData = this.getCallInfo(callControlId);
+        return callData?.openaiSession || null;
+    }
+    
+    /**
+     * Get conversation history for a call
+     */
+    async getConversationHistory(callControlId) {
+        try {
+            const callData = this.getCallInfo(callControlId);
+            
+            if (!callData?.openaiSession) {
+                return [];
+            }
+            
+            return await this.openaiService.getConversationHistory(callData.openaiSession.sessionId);
+            
+        } catch (error) {
+            console.error('❌ Error getting conversation history:', error);
+            return [];
         }
     }
 }

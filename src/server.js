@@ -25,6 +25,7 @@ const telnyxRoutes = require('../routes/telnyx');
 const telnyxVoiceRoutes = require('../routes/telnyxVoiceAPI');
 const callControlRoutes = require('../routes/callControlAPI');
 const agentRoutes = require('../routes/agents');
+const openaiSessionsRoutes = require('../routes/openai-sessions');
 
 const app = express();
 const server = http.createServer(app);
@@ -139,6 +140,7 @@ app.use('/api/telnyx', telnyxRoutes);
 app.use('/api/telnyx-voice', telnyxVoiceRoutes);
 app.use('/api/call-control', callControlRoutes);
 app.use('/api/agents', agentRoutes);
+app.use('/api/openai-sessions', openaiSessionsRoutes);
 
 // Main dashboard route (protected)
 app.get('/', (req, res) => {

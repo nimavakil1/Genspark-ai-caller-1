@@ -1964,6 +1964,17 @@
                                         <p class="mb-0"><strong>Status:</strong> <span id="livekitSessionStatus">Connecting...</span></p>
                                     </div>
                                 </div>
+                                
+                                <!-- OpenAI Realtime Status -->
+                                <div id="openaiStatus" class="alert alert-info" style="display: none;">
+                                    <h6><i class="fas fa-brain me-2"></i>OpenAI Realtime Session</h6>
+                                    <div id="openaiDetails">
+                                        <p class="mb-1"><strong>Session ID:</strong> <span id="openaiSessionId">-</span></p>
+                                        <p class="mb-1"><strong>AI Model:</strong> <span id="openaiModel">GPT-4o Realtime</span></p>
+                                        <p class="mb-1"><strong>Messages:</strong> <span id="openaiMessageCount">0</span></p>
+                                        <p class="mb-0"><strong>Status:</strong> <span id="openaiSessionStatus">Connecting...</span></p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </form>
@@ -3287,10 +3298,13 @@
                     return;
                 }
 
-                // Show LiveKit status while initiating
+                // Show LiveKit and OpenAI status while initiating
                 const livekitStatus = document.getElementById('livekitStatus');
+                const openaiStatus = document.getElementById('openaiStatus');
                 livekitStatus.style.display = 'block';
+                openaiStatus.style.display = 'block';
                 document.getElementById('livekitSessionStatus').textContent = 'Initiating call...';
+                document.getElementById('openaiSessionStatus').textContent = 'Creating AI session...';
 
                 const response = await fetch(`/api/agents/${agentId}/test-call`, {
                     method: 'POST',
@@ -3308,14 +3322,22 @@
 
                 const result = await response.json();
                 
-                // Update LiveKit status with call details
+                // Update LiveKit and OpenAI status with call details
                 if (result.call_details && result.call_details.call_control_id) {
-                    document.getElementById('livekitRoom').textContent = `agent-call-${result.call_details.call_control_id}`;
+                    const callControlId = result.call_details.call_control_id;
+                    
+                    // Update LiveKit status
+                    document.getElementById('livekitRoom').textContent = `agent-call-${callControlId}`;
                     document.getElementById('livekitAgent').textContent = result.agent.name;
                     document.getElementById('livekitSessionStatus').textContent = 'Call initiated - Waiting for answer...';
                     
-                    // Monitor call status
-                    monitorAgentCall(agentId, result.call_details.call_control_id);
+                    // Update OpenAI status
+                    document.getElementById('openaiSessionId').textContent = callControlId;
+                    document.getElementById('openaiSessionStatus').textContent = 'AI session created - Ready for conversation';
+                    document.getElementById('openaiStatus').className = 'alert alert-success';
+                    
+                    // Monitor call status and sessions
+                    monitorAgentCall(agentId, callControlId);
                 }
                 
                 showAlert('Agent test call initiated successfully! Real-time AI conversation enabled.', 'success');
@@ -3330,6 +3352,7 @@
                 console.error('Error initiating test call:', error);
                 showAlert('Failed to initiate test call', 'danger');
                 document.getElementById('livekitStatus').style.display = 'none';
+                document.getElementById('openaiStatus').style.display = 'none';
             }
         }
 
@@ -3365,6 +3388,7 @@
                         // Auto-hide after call ends
                         setTimeout(() => {
                             document.getElementById('livekitStatus').style.display = 'none';
+                            document.getElementById('openaiStatus').style.display = 'none';
                             bootstrap.Modal.getInstance(document.getElementById('testAgentModal')).hide();
                         }, 3000);
                     }
@@ -3392,7 +3416,64 @@
                         document.getElementById('livekitSessionStatus').textContent = 'Basic call mode (no LiveKit)';
                     }
                 }, 5000);
+                
+                // Monitor OpenAI session status
+                monitorOpenAISession(callControlId);
             }
+        }
+        
+        // Monitor OpenAI Realtime session
+        function monitorOpenAISession(callControlId) {
+            console.log(`🧠 Monitoring OpenAI session for call: ${callControlId}`);
+            
+            // Check OpenAI session status periodically
+            const checkOpenAISession = async () => {
+                try {
+                    const response = await fetch(`/api/openai-sessions/${callControlId}`);
+                    
+                    if (response.ok) {
+                        const sessionData = await response.json();
+                        console.log('🧠 OpenAI session status:', sessionData);
+                        
+                        if (sessionData.session) {
+                            document.getElementById('openaiSessionId').textContent = sessionData.session.sessionId || callControlId;
+                            document.getElementById('openaiSessionStatus').textContent = `Active (${sessionData.session.status})`;
+                            
+                            // Update message count if available
+                            if (sessionData.session.conversationLength !== undefined) {
+                                document.getElementById('openaiMessageCount').textContent = sessionData.session.conversationLength;
+                            }
+                            
+                            // Set status color based on session status
+                            const openaiStatusDiv = document.getElementById('openaiStatus');
+                            if (sessionData.session.status === 'active') {
+                                openaiStatusDiv.className = 'alert alert-success';
+                            } else if (sessionData.session.status === 'connecting') {
+                                openaiStatusDiv.className = 'alert alert-warning';
+                            } else {
+                                openaiStatusDiv.className = 'alert alert-info';
+                            }
+                        }
+                    } else if (response.status === 404) {
+                        // Session not found or ended
+                        document.getElementById('openaiSessionStatus').textContent = 'Session ended';
+                        document.getElementById('openaiStatus').className = 'alert alert-secondary';
+                    }
+                } catch (error) {
+                    console.warn('Could not get OpenAI session status:', error);
+                    document.getElementById('openaiSessionStatus').textContent = 'Status unavailable';
+                }
+            };
+            
+            // Check immediately and then every 5 seconds
+            checkOpenAISession();
+            const intervalId = setInterval(checkOpenAISession, 5000);
+            
+            // Clear interval after 5 minutes to avoid endless polling
+            setTimeout(() => {
+                clearInterval(intervalId);
+                console.log('🧠 Stopped monitoring OpenAI session');
+            }, 5 * 60 * 1000);
         }
 
         // Delete agent
