@@ -2056,7 +2056,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" id="startTestButton" class="btn btn-primary" onclick="event.preventDefault(); initiateTest();">
+                    <button type="button" id="startTestButton" class="btn btn-primary">
                         <i class="fas fa-microphone me-2"></i>Start Voice Test
                     </button>
                 </div>
@@ -3353,7 +3353,47 @@
                     document.getElementById('testAgentName').textContent = result.agent.name;
                     
                     // Show test modal
-                    new bootstrap.Modal(document.getElementById('testAgentModal')).show();
+                    const modal = new bootstrap.Modal(document.getElementById('testAgentModal'));
+                    modal.show();
+                    
+                    // Setup event handlers AFTER modal is shown
+                    document.getElementById('testAgentModal').addEventListener('shown.bs.modal', function setupModalHandlers() {
+                        console.log('Setting up voice test event handlers...');
+                        
+                        // Setup voice test button event handler (green button inside modal)
+                        const startVoiceTestBtn = document.getElementById('startVoiceTest');
+                        if (startVoiceTestBtn) {
+                            startVoiceTestBtn.onclick = function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('Green Start Voice Test button clicked');
+                                startVoiceTest();
+                            };
+                        }
+                        
+                        // Setup end voice test button event handler
+                        const endVoiceTestBtn = document.getElementById('endVoiceTest');
+                        if (endVoiceTestBtn) {
+                            endVoiceTestBtn.onclick = function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('End Voice Test button clicked');
+                                endVoiceTest();
+                            };
+                        }
+                        
+                        // Setup test mode radio buttons
+                        const testModeRadios = document.querySelectorAll('input[name="testMode"]');
+                        testModeRadios.forEach(radio => {
+                            radio.addEventListener('change', updateTestMode);
+                        });
+                        
+                        // Initialize test mode
+                        updateTestMode();
+                        
+                        // Remove this event listener so it doesn't fire multiple times
+                        this.removeEventListener('shown.bs.modal', setupModalHandlers);
+                    });
                 })
                 .catch(error => {
                     console.error('Error loading agent for test:', error);
@@ -4514,32 +4554,7 @@
         let speechSynthesis = window.speechSynthesis;
         let currentAgentId = null;
 
-        // Test Mode Switching
-        document.addEventListener('DOMContentLoaded', function() {
-            const testModeRadios = document.querySelectorAll('input[name="testMode"]');
-            testModeRadios.forEach(radio => {
-                radio.addEventListener('change', updateTestMode);
-            });
-            updateTestMode(); // Set initial state
-            
-            // Setup voice test button event handler
-            const startVoiceTestBtn = document.getElementById('startVoiceTest');
-            if (startVoiceTestBtn) {
-                startVoiceTestBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    startVoiceTest();
-                });
-            }
-            
-            // Setup end voice test button event handler
-            const endVoiceTestBtn = document.getElementById('endVoiceTest');
-            if (endVoiceTestBtn) {
-                endVoiceTestBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    endVoiceTest();
-                });
-            }
-        });
+        // Test Mode Switching - Event handlers are now set up in testAgent() function when modal is shown
 
         function updateTestMode() {
             const voiceMode = document.getElementById('voiceTestMode')?.checked;
@@ -4547,14 +4562,18 @@
             const voiceSection = document.getElementById('voiceTestSection');
             const startButton = document.getElementById('startTestButton');
 
+            console.log('updateTestMode called, voiceMode:', voiceMode);
+
             if (voiceMode) {
                 if (phoneSection) phoneSection.style.display = 'none';
                 if (voiceSection) voiceSection.style.display = 'block';
                 if (startButton) {
                     startButton.innerHTML = '<i class="fas fa-microphone me-2"></i>Start Voice Test';
-                    // Remove old onclick and set new one with preventDefault
+                    // Remove old onclick and set new one with preventDefault and stopPropagation
                     startButton.onclick = function(e) {
                         e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Purple Start Voice Test button clicked');
                         startVoiceTest();
                     };
                 }
@@ -4563,9 +4582,11 @@
                 if (voiceSection) voiceSection.style.display = 'none';
                 if (startButton) {
                     startButton.innerHTML = '<i class="fas fa-phone me-2"></i>Start Phone Test';
-                    // Remove old onclick and set new one with preventDefault
+                    // Remove old onclick and set new one with preventDefault and stopPropagation
                     startButton.onclick = function(e) {
                         e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Purple Start Phone Test button clicked');
                         initiateTestCall();
                     };
                 }
