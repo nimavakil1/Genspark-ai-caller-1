@@ -167,13 +167,54 @@ app.get('/health', (req, res) => {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
+  // Join room for call monitoring
   socket.on('join-room', (roomId) => {
     socket.join(roomId);
     console.log(`User ${socket.id} joined room ${roomId}`);
   });
 
+  // Handle call updates
   socket.on('call-update', (data) => {
     socket.to(data.roomId).emit('call-update', data);
+  });
+
+  // Handle agent session monitoring
+  socket.on('join-agent-session', (data) => {
+    const { callControlId, agentId } = data;
+    const roomId = `agent-${callControlId}`;
+    socket.join(roomId);
+    console.log(`Agent monitor ${socket.id} joined agent session: ${roomId}`);
+    
+    // Send current session status
+    socket.emit('agent-session-joined', {
+      callControlId,
+      agentId,
+      status: 'monitoring'
+    });
+  });
+
+  // Handle agent instructions from dashboard
+  socket.on('send-agent-instruction', (data) => {
+    const { callControlId, instruction } = data;
+    const roomId = `agent-${callControlId}`;
+    
+    console.log(`📤 Agent instruction for ${callControlId}: ${instruction}`);
+    
+    // Broadcast to all monitors of this agent session
+    socket.to(roomId).emit('agent-instruction-received', {
+      callControlId,
+      instruction,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  // Handle LiveKit room events
+  socket.on('livekit-room-event', (data) => {
+    const { roomName, eventType, participantInfo } = data;
+    console.log(`🎯 LiveKit room event: ${eventType} in ${roomName}`);
+    
+    // Broadcast to room monitors
+    io.to(`livekit-${roomName}`).emit('livekit-event', data);
   });
 
   socket.on('disconnect', () => {

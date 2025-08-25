@@ -1,5 +1,6 @@
 const axios = require('axios');
 const EventEmitter = require('events');
+const LiveKitAgentService = require('./livekitAgentService');
 
 class TelnyxCallControlService extends EventEmitter {
     constructor(options = {}) {
@@ -12,6 +13,7 @@ class TelnyxCallControlService extends EventEmitter {
         };
         
         this.activeCalls = new Map();
+        this.livekitService = new LiveKitAgentService();
         this.setupAxios();
     }
     
@@ -140,13 +142,26 @@ class TelnyxCallControlService extends EventEmitter {
     }
     
     /**
-     * Hangup call
+     * Hangup call and cleanup LiveKit session
      */
     async hangupCall(callControlId) {
         try {
             console.log(`📴 Hanging up call: ${callControlId}`);
             
+            // Get call data before cleanup
+            const callData = this.activeCalls.get(callControlId);
+            
             const response = await this.client.post(`/calls/${callControlId}/actions/hangup`);
+            
+            // Cleanup LiveKit session if it exists
+            if (callData?.livekitSession) {
+                try {
+                    await this.livekitService.endAgentConversation(callControlId);
+                    console.log(`🎯 LiveKit session cleaned up for call: ${callControlId}`);
+                } catch (livekitError) {
+                    console.warn('⚠️ Error cleaning up LiveKit session:', livekitError.message);
+                }
+            }
             
             // Remove from active calls
             this.activeCalls.delete(callControlId);
@@ -168,7 +183,7 @@ class TelnyxCallControlService extends EventEmitter {
     }
     
     /**
-     * Start AI conversation flow with agent configuration
+     * Start AI conversation flow with agent configuration and LiveKit integration
      */
     async startAIConversation(callControlId, customerData = {}) {
         try {
@@ -192,19 +207,67 @@ class TelnyxCallControlService extends EventEmitter {
                 
                 // Generate welcome message from agent prompt and knowledge
                 welcomeText = await this.generateAgentWelcomeMessage(agentData, customerData);
+                
+                // Start LiveKit agent conversation for real-time interaction
+                try {
+                    const livekitSession = await this.livekitService.startAgentConversation(
+                        callControlId, 
+                        agentData, 
+                        customerData
+                    );
+                    
+                    console.log(`🎯 LiveKit agent session started: ${livekitSession.roomName}`);
+                    
+                    // Store LiveKit session info in call data
+                    const callData = this.activeCalls.get(callControlId);
+                    if (callData) {
+                        callData.livekitSession = livekitSession;
+                    }
+                    
+                    // For now, still use TTS for initial message, but LiveKit is ready for real-time conversation
+                    await this.speakText(callControlId, welcomeText + ' I can now have a natural conversation with you using advanced AI technology.', voice, language);
+                    
+                    // Skip DTMF gathering - agent can handle natural conversation
+                    console.log(`🗣️ Agent conversation mode: Natural speech enabled for ${agentData.name}`);
+                    
+                    return { 
+                        success: true, 
+                        message: 'AI conversation started with agent configuration and LiveKit integration',
+                        livekit: {
+                            roomName: livekitSession.roomName,
+                            agentActive: true
+                        }
+                    };
+                    
+                } catch (livekitError) {
+                    console.warn('⚠️ LiveKit integration failed, falling back to basic TTS:', livekitError.message);
+                    
+                    // Fallback to basic TTS + DTMF flow
+                    await this.speakText(callControlId, welcomeText, voice, language);
+                    
+                    await this.gatherDTMF(callControlId, {
+                        prompt: 'Press 1 if now is a good time, press 2 if you prefer to be called later, or press 9 to opt out of future calls.',
+                        maxDigits: 1,
+                        timeout: 15000,
+                        validDigits: '129',
+                        voice: voice,
+                        language: language
+                    });
+                }
+                
+            } else {
+                // No agent configured - use basic flow
+                await this.speakText(callControlId, welcomeText, voice, language);
+                
+                await this.gatherDTMF(callControlId, {
+                    prompt: 'Press 1 if now is a good time, press 2 if you prefer to be called later, or press 9 to opt out of future calls.',
+                    maxDigits: 1,
+                    timeout: 15000,
+                    validDigits: '129',
+                    voice: voice,
+                    language: language
+                });
             }
-            
-            await this.speakText(callControlId, welcomeText, voice, language);
-            
-            // Gather response (1 for yes, 2 for no, 9 to end)
-            await this.gatherDTMF(callControlId, {
-                prompt: 'Press 1 if now is a good time, press 2 if you prefer to be called later, or press 9 to opt out of future calls.',
-                maxDigits: 1,
-                timeout: 15000,
-                validDigits: '129',
-                voice: voice,
-                language: language
-            });
             
             return { success: true, message: 'AI conversation started with agent configuration' };
             

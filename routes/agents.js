@@ -342,4 +342,62 @@ router.post('/:id/test-call', authenticateToken, asyncHandler(async (req, res) =
   }
 }));
 
+// Get LiveKit connection details for agent session
+router.get('/:id/livekit-session/:call_control_id', authenticateToken, asyncHandler(async (req, res) => {
+  const { id, call_control_id } = req.params;
+
+  try {
+    // Verify agent exists
+    const agentResult = await query(`
+      SELECT id, name FROM agents WHERE id = $1 AND is_active = true
+    `, [id]);
+
+    if (agentResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Agent not found'
+      });
+    }
+
+    // Get LiveKit session from call control service
+    const TelnyxCallControlService = require('../services/telnyxCallControlService');
+    const callControlService = new TelnyxCallControlService();
+    const callInfo = callControlService.getCallInfo(call_control_id);
+    
+    if (!callInfo || !callInfo.livekitSession) {
+      return res.status(404).json({
+        success: false,
+        error: 'No active LiveKit session found for this call'
+      });
+    }
+
+    res.json({
+      success: true,
+      livekit: {
+        serverUrl: callInfo.livekitSession.serverUrl,
+        roomName: callInfo.livekitSession.roomName,
+        agentToken: callInfo.livekitSession.agentToken,
+        customerToken: callInfo.livekitSession.customerToken
+      },
+      agent: {
+        id: callInfo.agentData.id,
+        name: callInfo.agentData.name,
+        voice_settings: callInfo.agentData.voice_settings
+      },
+      call: {
+        call_control_id,
+        status: 'active'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting LiveKit session:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get LiveKit session details',
+      details: error.message
+    });
+  }
+}));
+
 module.exports = router;

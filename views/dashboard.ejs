@@ -1945,13 +1945,24 @@
                             </div>
                             <div class="col-12">
                                 <div class="alert alert-info">
-                                    <h6><i class="fas fa-info-circle me-2"></i>Test Call Information</h6>
+                                    <h6><i class="fas fa-info-circle me-2"></i>Advanced AI Call Features</h6>
                                     <ul class="mb-0">
-                                        <li>This will initiate a real phone call using your agent's configuration</li>
-                                        <li>The call will use the agent's system prompt and knowledge base</li>
-                                        <li>Call logs will be created for tracking and analysis</li>
-                                        <li>Make sure the phone number can receive calls</li>
+                                        <li><strong>Real Phone Call:</strong> Initiates actual call using Telnyx integration</li>
+                                        <li><strong>AI Agent Voice:</strong> Uses agent's custom voice and conversation settings</li>
+                                        <li><strong>LiveKit Integration:</strong> Real-time audio streaming for natural conversations</li>
+                                        <li><strong>Dynamic Knowledge:</strong> Agent accesses knowledge base during conversation</li>
+                                        <li><strong>Call Analytics:</strong> Full conversation tracking and performance metrics</li>
                                     </ul>
+                                </div>
+                                
+                                <!-- LiveKit Status -->
+                                <div id="livekitStatus" class="alert alert-warning" style="display: none;">
+                                    <h6><i class="fas fa-broadcast-tower me-2"></i>LiveKit Session Status</h6>
+                                    <div id="livekitDetails">
+                                        <p class="mb-1"><strong>Room:</strong> <span id="livekitRoom">-</span></p>
+                                        <p class="mb-1"><strong>Agent:</strong> <span id="livekitAgent">-</span></p>
+                                        <p class="mb-0"><strong>Status:</strong> <span id="livekitSessionStatus">Connecting...</span></p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3276,6 +3287,11 @@
                     return;
                 }
 
+                // Show LiveKit status while initiating
+                const livekitStatus = document.getElementById('livekitStatus');
+                livekitStatus.style.display = 'block';
+                document.getElementById('livekitSessionStatus').textContent = 'Initiating call...';
+
                 const response = await fetch(`/api/agents/${agentId}/test-call`, {
                     method: 'POST',
                     headers: {
@@ -3292,15 +3308,90 @@
 
                 const result = await response.json();
                 
-                showAlert('Test call initiated successfully!', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('testAgentModal')).hide();
+                // Update LiveKit status with call details
+                if (result.call_details && result.call_details.call_control_id) {
+                    document.getElementById('livekitRoom').textContent = `agent-call-${result.call_details.call_control_id}`;
+                    document.getElementById('livekitAgent').textContent = result.agent.name;
+                    document.getElementById('livekitSessionStatus').textContent = 'Call initiated - Waiting for answer...';
+                    
+                    // Monitor call status
+                    monitorAgentCall(agentId, result.call_details.call_control_id);
+                }
                 
-                // Clear form
-                document.getElementById('testAgentForm').reset();
+                showAlert('Agent test call initiated successfully! Real-time AI conversation enabled.', 'success');
+                
+                // Don't hide modal immediately - let user see LiveKit status
+                setTimeout(() => {
+                    // Clear form but keep modal open to monitor call
+                    document.getElementById('testPhoneNumber').value = '';
+                }, 1000);
 
             } catch (error) {
                 console.error('Error initiating test call:', error);
                 showAlert('Failed to initiate test call', 'danger');
+                document.getElementById('livekitStatus').style.display = 'none';
+            }
+        }
+
+        // Monitor agent call status and LiveKit session
+        function monitorAgentCall(agentId, callControlId) {
+            console.log(`📊 Monitoring agent call: ${callControlId}`);
+            
+            // Join Socket.IO room for this agent session
+            if (typeof io !== 'undefined') {
+                const socket = io();
+                
+                socket.emit('join-agent-session', {
+                    callControlId: callControlId,
+                    agentId: agentId
+                });
+                
+                // Listen for agent session updates
+                socket.on('agent-session-joined', (data) => {
+                    console.log('🤖 Joined agent session monitoring:', data);
+                    document.getElementById('livekitSessionStatus').textContent = 'Monitoring active';
+                });
+                
+                socket.on('livekit-event', (data) => {
+                    console.log('🎯 LiveKit event:', data);
+                    
+                    if (data.eventType === 'participant_connected') {
+                        document.getElementById('livekitSessionStatus').textContent = 'Live conversation active';
+                        document.getElementById('livekitStatus').className = 'alert alert-success';
+                    } else if (data.eventType === 'participant_disconnected') {
+                        document.getElementById('livekitSessionStatus').textContent = 'Call ended';
+                        document.getElementById('livekitStatus').className = 'alert alert-secondary';
+                        
+                        // Auto-hide after call ends
+                        setTimeout(() => {
+                            document.getElementById('livekitStatus').style.display = 'none';
+                            bootstrap.Modal.getInstance(document.getElementById('testAgentModal')).hide();
+                        }, 3000);
+                    }
+                });
+                
+                // Check for LiveKit session details after a few seconds
+                setTimeout(async () => {
+                    try {
+                        const sessionResponse = await fetch(`/api/agents/${agentId}/livekit-session/${callControlId}`, {
+                            headers: getAuthHeader()
+                        });
+                        
+                        if (sessionResponse.ok) {
+                            const sessionData = await sessionResponse.json();
+                            console.log('🎯 LiveKit session details:', sessionData);
+                            
+                            if (sessionData.livekit && sessionData.livekit.roomName) {
+                                document.getElementById('livekitRoom').textContent = sessionData.livekit.roomName;
+                                document.getElementById('livekitSessionStatus').textContent = 'LiveKit session active';
+                                document.getElementById('livekitStatus').className = 'alert alert-success';
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('Could not get LiveKit session details:', error);
+                        document.getElementById('livekitSessionStatus').textContent = 'Basic call mode (no LiveKit)';
+                    }
+                }, 5000);
             }
         }
 
