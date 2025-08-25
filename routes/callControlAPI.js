@@ -62,12 +62,6 @@ router.post('/test-call', asyncHandler(async (req, res) => {
 
     const call = await callControlService.makeOutboundCall(to, null, customerData);
     
-    // Log the test call
-    await query(
-      'INSERT INTO call_logs (customer_id, phone_number, direction, status, created_at) VALUES ($1, $2, $3, $4, NOW())',
-      [customerId, to, 'outbound', 'initiated']
-    );
-    
     res.json({
       success: true,
       message: 'Test outbound call initiated successfully',
@@ -129,20 +123,10 @@ router.post('/outbound-call', authenticateToken, asyncHandler(async (req, res) =
 
     const call = await callControlService.makeOutboundCall(phone_number, from_number, customerData);
 
-    const callRecord = await query(`
-      INSERT INTO call_logs (
-        customer_id, phone_number, direction, status, created_at
-      ) VALUES ($1, $2, $3, $4, NOW())
-      RETURNING *
-    `, [
-      customer_id || null, phone_number, 'outbound', 'initiated'
-    ]);
-
     res.json({
       success: true,
       message: 'Outbound call initiated successfully',
       call: {
-        id: callRecord.rows[0].id,
         call_control_id: call.call_control_id,
         phone_number: phone_number,
         status: 'initiated',
