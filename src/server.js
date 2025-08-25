@@ -24,6 +24,7 @@ const orderRoutes = require('../routes/orders');
 const telnyxRoutes = require('../routes/telnyx');
 const telnyxVoiceRoutes = require('../routes/telnyxVoiceAPI');
 const callControlRoutes = require('../routes/callControlAPI');
+const agentRoutes = require('../routes/agents');
 
 const app = express();
 const server = http.createServer(app);
@@ -137,6 +138,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/telnyx', telnyxRoutes);
 app.use('/api/telnyx-voice', telnyxVoiceRoutes);
 app.use('/api/call-control', callControlRoutes);
+app.use('/api/agents', agentRoutes);
 
 // Main dashboard route (protected)
 app.get('/', (req, res) => {

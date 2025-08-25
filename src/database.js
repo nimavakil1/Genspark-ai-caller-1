@@ -355,6 +355,35 @@ const initializeDatabase = async () => {
       )
     `);
 
+    // Create agents table (for AI agent management)
+    await query(`
+      CREATE TABLE IF NOT EXISTS agents (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        system_prompt TEXT,
+        voice_settings JSONB DEFAULT '{}',
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create agent_knowledge table (for agent knowledge base)
+    await query(`
+      CREATE TABLE IF NOT EXISTS agent_knowledge (
+        id SERIAL PRIMARY KEY,
+        agent_id INTEGER REFERENCES agents(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        content TEXT,
+        file_url VARCHAR(500),
+        file_type VARCHAR(50),
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Create indexes for better performance
     await query('CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email)');
     await query('CREATE INDEX IF NOT EXISTS idx_customers_company ON customers(company_name)');
@@ -363,6 +392,10 @@ const initializeDatabase = async () => {
     await query('CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id)');
     await query('CREATE INDEX IF NOT EXISTS idx_orders_date ON orders(created_at)');
     await query('CREATE INDEX IF NOT EXISTS idx_delivery_addresses_customer ON delivery_addresses(customer_id)');
+    await query('CREATE INDEX IF NOT EXISTS idx_agents_name ON agents(name)');
+    await query('CREATE INDEX IF NOT EXISTS idx_agents_active ON agents(is_active)');
+    await query('CREATE INDEX IF NOT EXISTS idx_agent_knowledge_agent ON agent_knowledge(agent_id)');
+    await query('CREATE INDEX IF NOT EXISTS idx_agent_knowledge_active ON agent_knowledge(is_active)');
 
     // Run database migrations
     await runMigrations();
