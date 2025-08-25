@@ -262,9 +262,23 @@ router.post('/:id/test-call', authenticateToken, asyncHandler(async (req, res) =
     });
   }
 
-  // Get agent details
+  // Get agent details with knowledge
   const agentResult = await query(`
-    SELECT * FROM agents WHERE id = $1 AND is_active = true
+    SELECT a.*, 
+    JSON_AGG(
+      CASE WHEN ak.id IS NOT NULL 
+      THEN JSON_BUILD_OBJECT(
+        'id', ak.id,
+        'title', ak.title,
+        'content', ak.content,
+        'file_url', ak.file_url,
+        'file_type', ak.file_type
+      ) END
+    ) as knowledge
+    FROM agents a
+    LEFT JOIN agent_knowledge ak ON a.id = ak.agent_id AND ak.is_active = true
+    WHERE a.id = $1 AND a.is_active = true
+    GROUP BY a.id
   `, [id]);
 
   if (agentResult.rows.length === 0) {
@@ -275,28 +289,57 @@ router.post('/:id/test-call', authenticateToken, asyncHandler(async (req, res) =
   }
 
   const agent = agentResult.rows[0];
+  // Filter out null knowledge entries
+  agent.knowledge = agent.knowledge.filter(k => k !== null);
 
-  // Get agent knowledge
-  const knowledgeResult = await query(`
-    SELECT * FROM agent_knowledge 
-    WHERE agent_id = $1 AND is_active = true
-  `, [id]);
+  // Make actual test call via call control API
+  try {
+    const testCallResponse = await fetch(`${process.env.SERVER_BASE_URL || 'http://localhost:3001'}/api/call-control/test-call`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        to: phone_number,
+        customer_name: `Test Customer (Agent: ${agent.name})`,
+        agent_id: id
+      })
+    });
 
-  // TODO: Integrate with Telnyx and LiveKit for actual voice testing
-  // For now, return success with agent data
-  res.json({
-    success: true,
-    message: 'Test call initiated with agent',
-    agent: {
-      ...agent,
-      knowledge: knowledgeResult.rows
-    },
-    test_details: {
-      phone_number,
-      test_scenario: test_scenario || 'Standard conversation test',
-      note: 'Voice call simulation will be implemented in the next phase'
+    if (!testCallResponse.ok) {
+      throw new Error('Failed to initiate test call');
     }
-  });
+
+    const testCallResult = await testCallResponse.json();
+
+    res.json({
+      success: true,
+      message: 'Agent test call initiated successfully',
+      agent: {
+        id: agent.id,
+        name: agent.name,
+        description: agent.description,
+        voice_settings: agent.voice_settings,
+        knowledge_count: agent.knowledge.length
+      },
+      call_details: {
+        call_control_id: testCallResult.call_control_id,
+        phone_number,
+        test_scenario: test_scenario || 'Standard conversation test',
+        voice_model: agent.voice_settings?.voice || 'alloy',
+        language: agent.voice_settings?.language || 'en'
+      },
+      note: `Real voice call initiated using agent ${agent.name} with custom conversation flow and voice settings`
+    });
+
+  } catch (error) {
+    console.error('Error initiating agent test call:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to initiate agent test call',
+      details: error.message
+    });
+  }
 }));
 
 module.exports = router;

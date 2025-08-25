@@ -26,7 +26,7 @@ router.get('/health', (req, res) => {
 
 // Test call endpoint (no auth required for testing)
 router.post('/test-call', asyncHandler(async (req, res) => {
-  const { to, customer_name } = req.body;
+  const { to, customer_name, agent_id } = req.body;
 
   if (!to) {
     return res.status(400).json({
@@ -60,7 +60,36 @@ router.post('/test-call', asyncHandler(async (req, res) => {
       customer_name: testCustomerName
     };
 
-    const call = await callControlService.makeOutboundCall(to, null, customerData);
+    // Load agent data if agent_id is provided
+    let agentData = null;
+    if (agent_id) {
+      const agentResult = await query(`
+        SELECT a.*, 
+        JSON_AGG(
+          CASE WHEN ak.id IS NOT NULL 
+          THEN JSON_BUILD_OBJECT(
+            'id', ak.id,
+            'title', ak.title,
+            'content', ak.content,
+            'file_url', ak.file_url,
+            'file_type', ak.file_type
+          ) END
+        ) as knowledge
+        FROM agents a
+        LEFT JOIN agent_knowledge ak ON a.id = ak.agent_id AND ak.is_active = true
+        WHERE a.id = $1 AND a.is_active = true
+        GROUP BY a.id
+      `, [agent_id]);
+
+      if (agentResult.rows.length > 0) {
+        agentData = agentResult.rows[0];
+        // Filter out null knowledge entries
+        agentData.knowledge = agentData.knowledge.filter(k => k !== null);
+        console.log(`🤖 Using agent: ${agentData.name} for test call`);
+      }
+    }
+
+    const call = await callControlService.makeOutboundCall(to, null, customerData, agentData);
     
     res.json({
       success: true,
@@ -69,7 +98,14 @@ router.post('/test-call', asyncHandler(async (req, res) => {
       to: to,
       from: process.env.TELNYX_PHONE_NUMBER,
       customer_id: customerId,
-      note: 'Call will be answered automatically and AI conversation will begin'
+      agent: agentData ? {
+        id: agentData.id,
+        name: agentData.name,
+        voice_settings: agentData.voice_settings
+      } : null,
+      note: agentData ? 
+        `Call will use AI Agent: ${agentData.name} with custom voice and conversation flow` :
+        'Call will be answered automatically and AI conversation will begin'
     });
 
   } catch (error) {
@@ -84,7 +120,7 @@ router.post('/test-call', asyncHandler(async (req, res) => {
 
 // Make outbound call using Call Control API
 router.post('/outbound-call', authenticateToken, asyncHandler(async (req, res) => {
-  const { customer_id, phone_number, from_number, customer_name } = req.body;
+  const { customer_id, phone_number, from_number, customer_name, agent_id } = req.body;
 
   if (!phone_number) {
     return res.status(400).json({
@@ -121,7 +157,36 @@ router.post('/outbound-call', authenticateToken, asyncHandler(async (req, res) =
       };
     }
 
-    const call = await callControlService.makeOutboundCall(phone_number, from_number, customerData);
+    // Load agent data if agent_id is provided
+    let agentData = null;
+    if (agent_id) {
+      const agentResult = await query(`
+        SELECT a.*, 
+        JSON_AGG(
+          CASE WHEN ak.id IS NOT NULL 
+          THEN JSON_BUILD_OBJECT(
+            'id', ak.id,
+            'title', ak.title,
+            'content', ak.content,
+            'file_url', ak.file_url,
+            'file_type', ak.file_type
+          ) END
+        ) as knowledge
+        FROM agents a
+        LEFT JOIN agent_knowledge ak ON a.id = ak.agent_id AND ak.is_active = true
+        WHERE a.id = $1 AND a.is_active = true
+        GROUP BY a.id
+      `, [agent_id]);
+
+      if (agentResult.rows.length > 0) {
+        agentData = agentResult.rows[0];
+        // Filter out null knowledge entries
+        agentData.knowledge = agentData.knowledge.filter(k => k !== null);
+        console.log(`🤖 Using agent: ${agentData.name} for outbound call`);
+      }
+    }
+
+    const call = await callControlService.makeOutboundCall(phone_number, from_number, customerData, agentData);
 
     res.json({
       success: true,
@@ -131,7 +196,12 @@ router.post('/outbound-call', authenticateToken, asyncHandler(async (req, res) =
         phone_number: phone_number,
         status: 'initiated',
         direction: 'outbound'
-      }
+      },
+      agent: agentData ? {
+        id: agentData.id,
+        name: agentData.name,
+        voice_settings: agentData.voice_settings
+      } : null
     });
 
   } catch (error) {
@@ -177,14 +247,22 @@ router.post('/webhooks', asyncHandler(async (req, res) => {
       }
     }
 
+    // Get agent information from active call
+    let agentId = null;
+    const callInfo = callControlService.getCallInfo(call_control_id);
+    if (callInfo?.agentData) {
+      agentId = callInfo.agentData.id;
+      console.log(`🤖 Call using agent: ${callInfo.agentData.name} (ID: ${agentId})`);
+    }
+
     switch (event_type) {
       case 'call.initiated':
         console.log(`📞 Outbound call initiated: ${call_control_id}`);
         
         // Insert call log for initiated call
         await query(
-          'INSERT INTO call_logs (customer_id, phone_number, direction, status, created_at) VALUES ($1, $2, $3, $4, NOW())',
-          [customerId, to, 'outbound', 'initiated']
+          'INSERT INTO call_logs (customer_id, agent_id, phone_number, direction, status, created_at) VALUES ($1, $2, $3, $4, $5, NOW())',
+          [customerId, agentId, to, 'outbound', 'initiated']
         );
         break;
 

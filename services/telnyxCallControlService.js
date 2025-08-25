@@ -30,11 +30,14 @@ class TelnyxCallControlService extends EventEmitter {
     /**
      * Make outbound call using Call Control API
      */
-    async makeOutboundCall(to, from = null, customerData = {}) {
+    async makeOutboundCall(to, from = null, customerData = {}, agentData = null) {
         try {
             from = from || this.config.phoneNumber;
             
             console.log(`📞 Making Call Control outbound call from ${from} to ${to}`);
+            if (agentData) {
+                console.log(`🤖 Using AI Agent: ${agentData.name} (ID: ${agentData.id})`);
+            }
             
             const callData = {
                 to: to,
@@ -50,6 +53,7 @@ class TelnyxCallControlService extends EventEmitter {
             this.activeCalls.set(call.call_control_id, {
                 ...call,
                 customerData,
+                agentData,
                 startTime: new Date()
             });
             
@@ -164,30 +168,103 @@ class TelnyxCallControlService extends EventEmitter {
     }
     
     /**
-     * Start AI conversation flow
+     * Start AI conversation flow with agent configuration
      */
     async startAIConversation(callControlId, customerData = {}) {
         try {
             console.log(`🤖 Starting AI conversation for call: ${callControlId}`);
             
-            // Speak welcome message
-            const welcomeText = `Hello! Thank you for answering. This is an AI assistant from the receipt roll company. I'm calling to tell you about our high-quality thermal receipt rolls. Is now a good time to talk?`;
+            const callInfo = this.getCallInfo(callControlId);
+            const agentData = callInfo?.agentData;
             
-            await this.speakText(callControlId, welcomeText);
+            let welcomeText = `Hello! Thank you for answering. This is an AI assistant from the receipt roll company. I'm calling to tell you about our high-quality thermal receipt rolls. Is now a good time to talk?`;
+            let voice = 'alice';
+            let language = 'en';
+            
+            // Use agent configuration if available
+            if (agentData) {
+                console.log(`🤖 Using agent configuration: ${agentData.name}`);
+                
+                // Use agent voice settings
+                const voiceSettings = agentData.voice_settings || {};
+                voice = this.mapAgentVoiceToTelnyx(voiceSettings.voice || 'alloy');
+                language = voiceSettings.language || 'en';
+                
+                // Generate welcome message from agent prompt and knowledge
+                welcomeText = await this.generateAgentWelcomeMessage(agentData, customerData);
+            }
+            
+            await this.speakText(callControlId, welcomeText, voice, language);
             
             // Gather response (1 for yes, 2 for no, 9 to end)
             await this.gatherDTMF(callControlId, {
                 prompt: 'Press 1 if now is a good time, press 2 if you prefer to be called later, or press 9 to opt out of future calls.',
                 maxDigits: 1,
                 timeout: 15000,
-                validDigits: '129'
+                validDigits: '129',
+                voice: voice,
+                language: language
             });
             
-            return { success: true, message: 'AI conversation started' };
+            return { success: true, message: 'AI conversation started with agent configuration' };
             
         } catch (error) {
             console.error('❌ Error starting AI conversation:', error);
             throw error;
+        }
+    }
+    
+    /**
+     * Map agent voice models to Telnyx TTS voices
+     */
+    mapAgentVoiceToTelnyx(agentVoice) {
+        const voiceMap = {
+            'alloy': 'alice',
+            'echo': 'alice', 
+            'fable': 'alice',
+            'onyx': 'alice',
+            'nova': 'alice',
+            'shimmer': 'alice'
+        };
+        
+        return voiceMap[agentVoice] || 'alice';
+    }
+    
+    /**
+     * Generate welcome message using agent prompt and knowledge
+     */
+    async generateAgentWelcomeMessage(agentData, customerData = {}) {
+        try {
+            // For now, create a simple welcome message based on agent description
+            // TODO: Integrate with OpenAI to generate dynamic messages from system prompt
+            
+            const agentName = agentData.name || 'AI Assistant';
+            const description = agentData.description || 'helping with your business needs';
+            
+            let welcomeText = `Hello! This is ${agentName} from the receipt roll company. I'm an AI assistant specialized in ${description}. `;
+            
+            // Add knowledge-based context if available
+            if (agentData.knowledge && agentData.knowledge.length > 0) {
+                const productInfo = agentData.knowledge.find(k => 
+                    k.title.toLowerCase().includes('product') || 
+                    k.title.toLowerCase().includes('catalog')
+                );
+                
+                if (productInfo) {
+                    welcomeText += `I have information about our thermal receipt rolls and can help you with pricing and orders. `;
+                }
+            }
+            
+            welcomeText += `Is now a good time to discuss your receipt roll needs?`;
+            
+            console.log(`🤖 Generated welcome message for agent ${agentName}: ${welcomeText.substring(0, 100)}...`);
+            
+            return welcomeText;
+            
+        } catch (error) {
+            console.error('❌ Error generating agent welcome message:', error);
+            // Fallback to default message
+            return `Hello! Thank you for answering. This is an AI assistant from the receipt roll company. I'm calling to tell you about our high-quality thermal receipt rolls. Is now a good time to talk?`;
         }
     }
 }

@@ -172,6 +172,26 @@ const runMigrations = async () => {
       }
     }
 
+    // Migration 5: Add agent_id to call_logs table
+    try {
+      const columnCheck = await query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'call_logs' 
+        AND column_name = 'agent_id'
+      `);
+
+      if (columnCheck.rows.length === 0) {
+        await query(`
+          ALTER TABLE call_logs 
+          ADD COLUMN agent_id INTEGER REFERENCES agents(id)
+        `);
+        console.log('✅ Added agent_id column to call_logs table');
+      }
+    } catch (error) {
+      console.log('⚠️ Call logs agent_id column migration issue:', error.message);
+    }
+
     console.log('✅ Database migrations completed successfully');
     
   } catch (error) {
@@ -270,6 +290,7 @@ const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS call_logs (
         id SERIAL PRIMARY KEY,
         customer_id INTEGER REFERENCES customers(id),
+        agent_id INTEGER REFERENCES agents(id),
         phone_number VARCHAR(20),
         direction VARCHAR(10) CHECK (direction IN ('inbound', 'outbound')),
         duration INTEGER,
