@@ -53,6 +53,10 @@
 - **LiveKit + OpenAI Integration** for real-time audio processing and AI responses
 - Real-time agent session monitoring in dashboard
 - WebSocket-based OpenAI conversation handling
+- **Language Verification System** - Automatic language detection and agent switching
+- **Automatic Turn-Taking** - Voice activity detection for natural conversations
+- **Multi-Language Support** - 6 languages (EN, FR, NL, DE, ES, IT)
+- **Smart Port Detection** - Automatic free port selection for deployment
 
 ## Features Pending ⏳
 - LiveKit SIP trunk creation and testing (Docker Compose ready)
@@ -118,6 +122,8 @@ docker-compose up -d redis livekit
 
 # 8. Start the application
 npm start
+# or with automatic port detection (recommended):
+npm run start:auto
 # or for development:
 npm run dev
 
@@ -154,6 +160,24 @@ chmod +x setup-telnyx-livekit.sh
 - ✅ `setup-telnyx-livekit.sh` - Automated setup following official docs
 ```
 
+### Smart Port Detection & Startup
+
+**NEW**: The system now includes automatic port detection to avoid conflicts!
+
+```bash
+# Recommended startup method (finds free port automatically)
+npm run start:auto
+
+# Traditional startup (uses specified PORT or 3001)
+npm start
+```
+
+**Benefits of `start:auto`:**
+- ✅ Automatically finds next available port starting from 3001
+- ✅ No more "port already in use" errors
+- ✅ Shows exactly which port was chosen
+- ✅ Perfect for development and production deployment
+
 ### Update from GitHub
 
 ```bash
@@ -163,10 +187,13 @@ git pull origin main
 # Install any new dependencies
 npm install
 
-# Run any new migrations
+# Run any new migrations (automatic on restart)
 npm run db:migrate
 
-# Restart the application
+# Restart with smart port detection
+npm run start:auto
+
+# Or restart with PM2
 pm2 restart all
 # or if using systemd:
 sudo systemctl restart ai-sales-system
@@ -275,11 +302,50 @@ BREVO_API_KEY=your_brevo_api_key
 - **Knowledge Management**: Attach and manage knowledge base content for agents
 - **Test Interface**: Test AI agents with simulated conversations
 
+## Language Verification System 🌍
+
+**STATUS**: ✅ Fully Implemented - Multi-language AI agent support with automatic switching
+
+### Features
+- **Automatic Language Detection**: Detects customer language from speech patterns
+- **Smart Agent Switching**: Seamlessly switches to agents that speak detected language
+- **6 Language Support**: English, French, Dutch, German, Spanish, Italian
+- **Automatic Turn-Taking**: Voice activity detection eliminates manual microphone controls
+- **30-Second Timeout**: Conversations auto-end after inactivity
+- **Multi-Agent Rooms**: Multiple agents in same LiveKit room for seamless handover
+
+### How It Works
+1. **Customer Speaks** → System detects language automatically
+2. **Language Mismatch** → UI suggests switching to appropriate language agent  
+3. **User Confirms** → Seamlessly switches agents without losing conversation context
+4. **Conversation Continues** → In correct language with natural turn-taking
+5. **Auto-End** → After 30 seconds of silence or manual end
+
+### Voice Testing Interface
+- **No Manual Buttons**: Automatic voice activity detection
+- **Real-time Indicators**: Animated voice activity indicators
+- **Language Verification**: Live language detection and switching UI
+- **Localized Welcomes**: Welcome messages in customer's detected language
+
+### API Endpoints
+- `POST /api/language/detect` - Detect language from speech text
+- `GET /api/language/agents?language=en` - Get agents by language
+- `POST /api/language/verify-customer` - Verify customer language settings
+- `POST /api/language/confirm-customer` - Confirm customer language
+- `GET /api/language/best-agent/:customerId` - Get optimal agent for customer
+
+### Agent Management
+- **Language Selection**: Each agent has a supported language (EN, FR, NL, DE, ES, IT)
+- **Voice Configuration**: Separate voice language and conversation language
+- **Agent Switching**: Runtime switching between agents based on customer needs
+- **Knowledge Base**: Language-specific knowledge and responses
+
 ## Next Development Priorities
 1. Complete LiveKit + Telnyx integration for AI calling
-2. Configure production OpenAI API key for live conversations
-3. Implement Shopify product synchronization
-4. Set up Brevo WhatsApp/email automation
-5. Deploy N8N workflow automation
-6. Add advanced analytics and reporting
-7. Production deployment with SSL certificates
+2. Configure production OpenAI API key for live conversations  
+3. Implement local TTS/STT for reduced latency (Whisper, Coqui TTS)
+4. Implement Shopify product synchronization
+5. Set up Brevo WhatsApp/email automation
+6. Deploy N8N workflow automation
+7. Add advanced analytics and reporting
+8. Production deployment with SSL certificates
