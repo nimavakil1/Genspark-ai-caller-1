@@ -192,6 +192,26 @@ const runMigrations = async () => {
       console.log('⚠️ Call logs agent_id column migration issue:', error.message);
     }
 
+    // Migration 6: Add supported_language to agents table
+    try {
+      const columnCheck = await query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'agents' 
+        AND column_name = 'supported_language'
+      `);
+
+      if (columnCheck.rows.length === 0) {
+        await query(`
+          ALTER TABLE agents 
+          ADD COLUMN supported_language VARCHAR(5) DEFAULT 'en'
+        `);
+        console.log('✅ Added supported_language column to agents table');
+      }
+    } catch (error) {
+      console.log('⚠️ Agents supported_language column migration issue:', error.message);
+    }
+
     console.log('✅ Database migrations completed successfully');
     
   } catch (error) {

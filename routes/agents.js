@@ -56,7 +56,7 @@ router.get('/:id', authenticateToken, asyncHandler(async (req, res) => {
 
 // Create new agent
 router.post('/', authenticateToken, asyncHandler(async (req, res) => {
-  const { name, description, system_prompt, voice_settings } = req.body;
+  const { name, description, system_prompt, voice_settings, supported_language } = req.body;
 
   if (!name || !system_prompt) {
     return res.status(400).json({
@@ -65,15 +65,26 @@ router.post('/', authenticateToken, asyncHandler(async (req, res) => {
     });
   }
 
+  // Validate supported language
+  const validLanguages = ['en', 'fr', 'nl', 'de', 'es', 'it'];
+  const language = supported_language || 'en';
+  if (!validLanguages.includes(language)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid language code. Supported: en, fr, nl, de, es, it'
+    });
+  }
+
   const result = await query(`
-    INSERT INTO agents (name, description, system_prompt, voice_settings)
-    VALUES ($1, $2, $3, $4)
+    INSERT INTO agents (name, description, system_prompt, voice_settings, supported_language)
+    VALUES ($1, $2, $3, $4, $5)
     RETURNING *
   `, [
     name,
     description || null,
     system_prompt,
-    voice_settings ? JSON.stringify(voice_settings) : '{}'
+    voice_settings ? JSON.stringify(voice_settings) : '{}',
+    language
   ]);
 
   res.status(201).json({
@@ -86,13 +97,24 @@ router.post('/', authenticateToken, asyncHandler(async (req, res) => {
 // Update agent
 router.put('/:id', authenticateToken, asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, description, system_prompt, voice_settings } = req.body;
+  const { name, description, system_prompt, voice_settings, supported_language } = req.body;
 
   if (!name || !system_prompt) {
     return res.status(400).json({
       success: false,
       error: 'Name and system prompt are required'
     });
+  }
+
+  // Validate supported language if provided
+  if (supported_language) {
+    const validLanguages = ['en', 'fr', 'nl', 'de', 'es', 'it'];
+    if (!validLanguages.includes(supported_language)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid language code. Supported: en, fr, nl, de, es, it'
+      });
+    }
   }
 
   const result = await query(`
@@ -102,14 +124,16 @@ router.put('/:id', authenticateToken, asyncHandler(async (req, res) => {
       description = $2,
       system_prompt = $3,
       voice_settings = $4,
+      supported_language = COALESCE($5, supported_language),
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $5 AND is_active = true
+    WHERE id = $6 AND is_active = true
     RETURNING *
   `, [
     name,
     description || null,
     system_prompt,
     voice_settings ? JSON.stringify(voice_settings) : '{}',
+    supported_language || null,
     id
   ]);
 

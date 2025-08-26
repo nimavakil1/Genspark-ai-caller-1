@@ -14,6 +14,9 @@ const auth = require('../middleware/auth');
 // Import database initialization
 const { initializeDatabase } = require('./database');
 
+// Import language verification service
+const LanguageVerificationService = require('./languageVerificationService');
+
 // Import routes
 const authRoutes = require('../routes/auth');
 const customerRoutes = require('../routes/customers');
@@ -141,6 +144,88 @@ app.use('/api/telnyx-voice', telnyxVoiceRoutes);
 app.use('/api/call-control', callControlRoutes);
 app.use('/api/agents', agentRoutes);
 app.use('/api/openai-sessions', openaiSessionsRoutes);
+
+// Initialize language verification service
+const languageService = new LanguageVerificationService();
+
+// Language verification API endpoints
+app.post('/api/language/detect', async (req, res) => {
+  try {
+    const { speechText, customerId } = req.body;
+    
+    if (!speechText) {
+      return res.status(400).json({ error: 'speechText is required' });
+    }
+
+    const result = await languageService.processSpeechForLanguageVerification(speechText, customerId);
+    res.json(result);
+  } catch (error) {
+    console.error('Language detection error:', error);
+    res.status(500).json({ error: 'Failed to detect language' });
+  }
+});
+
+app.get('/api/language/agents', async (req, res) => {
+  try {
+    const { language } = req.query;
+    
+    if (language) {
+      const agents = await languageService.getAgentsByLanguage(language);
+      res.json(agents);
+    } else {
+      const agents = await languageService.getActiveAgents();
+      res.json(agents);
+    }
+  } catch (error) {
+    console.error('Get agents error:', error);
+    res.status(500).json({ error: 'Failed to get agents' });
+  }
+});
+
+app.post('/api/language/verify-customer', async (req, res) => {
+  try {
+    const { customerId, detectedLanguage } = req.body;
+    
+    if (!customerId) {
+      return res.status(400).json({ error: 'customerId is required' });
+    }
+
+    const result = await languageService.verifyCustomerLanguage(customerId, detectedLanguage);
+    res.json(result);
+  } catch (error) {
+    console.error('Customer verification error:', error);
+    res.status(500).json({ error: 'Failed to verify customer language' });
+  }
+});
+
+app.post('/api/language/confirm-customer', async (req, res) => {
+  try {
+    const { customerId, languageCode } = req.body;
+    
+    if (!customerId || !languageCode) {
+      return res.status(400).json({ error: 'customerId and languageCode are required' });
+    }
+
+    await languageService.confirmCustomerLanguage(customerId, languageCode);
+    res.json({ success: true, message: 'Language confirmed successfully' });
+  } catch (error) {
+    console.error('Confirm language error:', error);
+    res.status(500).json({ error: 'Failed to confirm language' });
+  }
+});
+
+app.get('/api/language/best-agent/:customerId', async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { preferredLanguage } = req.query;
+    
+    const result = await languageService.getBestAgentForCustomer(parseInt(customerId), preferredLanguage);
+    res.json(result);
+  } catch (error) {
+    console.error('Get best agent error:', error);
+    res.status(500).json({ error: 'Failed to get best agent' });
+  }
+});
 
 // Main dashboard route (protected)
 app.get('/', (req, res) => {
