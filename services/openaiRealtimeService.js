@@ -292,6 +292,71 @@ VOICE SETTINGS:
                 this.emit('error', { callControlId, error: message.error, agentData });
                 break;
                 
+            case 'response.audio_transcript.delta':
+                // Handle audio transcript deltas (text version of spoken response)
+                if (message.delta) {
+                    session.assistantTranscriptBuffer = (session.assistantTranscriptBuffer || '') + message.delta;
+                }
+                break;
+                
+            case 'response.audio_transcript.done':
+                // Complete audio transcript is ready
+                if (session.assistantTranscriptBuffer) {
+                    console.log(`🤖 Assistant transcript: "${session.assistantTranscriptBuffer}"`);
+                    session.conversationHistory.push({
+                        type: 'assistant_response',
+                        content: session.assistantTranscriptBuffer,
+                        timestamp: new Date()
+                    });
+                    this.emit('textResponse', { 
+                        callControlId, 
+                        textDelta: session.assistantTranscriptBuffer, 
+                        agentData 
+                    });
+                    delete session.assistantTranscriptBuffer;
+                }
+                break;
+                
+            case 'input_audio_buffer.committed':
+                // Audio buffer committed, ready for processing
+                break;
+                
+            case 'conversation.item.created':
+                // Conversation item created
+                break;
+                
+            case 'response.created':
+                // Response generation started
+                break;
+                
+            case 'response.done':
+                // Response generation completed
+                break;
+                
+            case 'response.output_item.added':
+                // Output item added to response
+                break;
+                
+            case 'response.content_part.added':
+                // Content part added to response
+                break;
+                
+            case 'response.content_part.done':
+                // Content part completed
+                break;
+                
+            case 'response.output_item.done':
+                // Output item completed
+                break;
+                
+            case 'conversation.item.input_audio_transcription.delta':
+                // Partial transcription (we can ignore these)
+                break;
+                
+            case 'rate_limits.updated':
+                // Rate limits updated (we can ignore these)
+                break;
+                
             default:
                 // Log unknown message types for debugging
                 console.log(`🔍 Unknown OpenAI message type: ${message.type}`);

@@ -10,6 +10,8 @@
     <title><%= title || 'AI Sales Dashboard' %></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- LiveKit Client SDK -->
+    <script src="https://unpkg.com/livekit-client/dist/livekit-client.umd.js"></script>
     <style>
         :root {
             --primary-color: #667eea;
@@ -2165,6 +2167,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- LiveKit Voice Handler -->
+    <script src="/livekit-voice-handler.js"></script>
     <script>
         // Global variables
         let currentSection = 'overview';
@@ -4671,11 +4675,7 @@
         }
 
         // Voice Testing Variables
-        let voiceTestSession = null;
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let isRecording = false;
-        let speechSynthesis = window.speechSynthesis;
+        let livekitVoiceHandler = null;
         let currentAgentId = null;
 
         // Test Mode Switching - Event handlers are now set up in testAgent() function when modal is shown
@@ -4757,18 +4757,22 @@
                 const sessionData = await sessionResponse.json();
                 console.log('✅ OpenAI session created:', sessionData);
                 
+                // Create audio context
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 16000
+                });
+                
                 window.currentVoiceTestSession = {
                     sessionId: sessionData.session_id,
                     callControlId: sessionData.call_control_id,
-                    stream: stream
+                    stream: stream,
+                    audioContext: audioContext,
+                    processor: null
                 };
                 
                 showAlert('🎤 Voice conversation started! Speak now...', 'success');
                 
                 // Set up audio processing
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)({
-                    sampleRate: 16000
-                });
                 const source = audioContext.createMediaStreamSource(stream);
                 
                 // Create audio processor worklet or script processor
@@ -4786,12 +4790,32 @@
                 } catch (error) {
                     console.warn('AudioWorklet not available, using ScriptProcessor');
                     
-                    // Fallback to ScriptProcessor
+                    // Fallback to ScriptProcessor with voice activity detection
                     const processor = audioContext.createScriptProcessor(4096, 1, 1);
+                    let lastAudioSent = 0;
+                    const AUDIO_THROTTLE_MS = 1000; // Only send audio every 1000ms
+                    const VOICE_THRESHOLD = 0.01; // Voice activity threshold
+                    
+                    // Store processor in session for cleanup
+                    window.currentVoiceTestSession.processor = processor;
+                    
                     processor.onaudioprocess = function(event) {
                         const inputBuffer = event.inputBuffer.getChannelData(0);
-                        const audioData = new Float32Array(inputBuffer);
-                        sendAudioToOpenAI(audioData);
+                        
+                        // Calculate RMS (voice activity detection)
+                        let rms = 0;
+                        for (let i = 0; i < inputBuffer.length; i++) {
+                            rms += inputBuffer[i] * inputBuffer[i];
+                        }
+                        rms = Math.sqrt(rms / inputBuffer.length);
+                        
+                        // Only send audio if there's voice activity and we haven't sent recently
+                        const now = Date.now();
+                        if (rms > VOICE_THRESHOLD && now - lastAudioSent >= AUDIO_THROTTLE_MS) {
+                            lastAudioSent = now;
+                            const audioData = new Float32Array(inputBuffer);
+                            sendAudioToOpenAI(audioData);
+                        }
                     };
                     
                     source.connect(processor);
@@ -4801,10 +4825,10 @@
                 // Set up conversation display
                 updateConversationDisplay('System', 'Voice conversation started. Speak to interact with the AI agent.');
                 
-                // Start polling for conversation updates
+                // Start polling for conversation updates (reduced frequency to prevent rate limiting)
                 window.conversationPolling = setInterval(function() {
                     pollConversationUpdates(sessionData.session_id);
-                }, 2000); // Poll every 2 seconds
+                }, 5000); // Poll every 5 seconds to prevent rate limiting
                 
             } catch (error) {
                 console.error('❌ Error starting voice conversation:', error);
@@ -4831,10 +4855,23 @@
                         const newMessages = history.slice(lastConversationLength);
                         
                         newMessages.forEach(message => {
+                            let content = message.content;
+                            
+                            // Handle object content by converting to string
+                            if (typeof content === 'object') {
+                                if (content && content.text) {
+                                    content = content.text;
+                                } else if (content && typeof content === 'object') {
+                                    content = JSON.stringify(content, null, 2);
+                                } else {
+                                    content = String(content);
+                                }
+                            }
+                            
                             if (message.type === 'customer_message' || message.role === 'user') {
-                                updateConversationDisplay('User', message.content);
+                                updateConversationDisplay('User', content);
                             } else if (message.type === 'assistant_response' || message.role === 'assistant') {
-                                updateConversationDisplay('Agent', message.content);
+                                updateConversationDisplay('Agent', content);
                             }
                         });
                         
@@ -4919,9 +4956,9 @@
             }
         }
 
-        // Voice Test Functions with Language Verification
+        // Voice Test Functions with LiveKit Integration
         async function startVoiceTest() {
-            console.log('🚀 startVoiceTest() function called');
+            console.log('🚀 Starting LiveKit voice test...');
             try {
                 currentAgentId = document.getElementById('testAgentId').value;
                 const scenario = document.getElementById('voiceTestScenario').value;
@@ -4931,92 +4968,31 @@
                 const statusDiv = document.getElementById('voiceTestStatus');
                 const statusText = document.getElementById('voiceStatusText');
                 statusDiv.style.display = 'block';
-                statusText.textContent = 'Requesting microphone access...';
-                console.log('💬 Status updated: Requesting microphone access...');
+                statusText.textContent = 'Initializing LiveKit voice session...';
 
-                // Request microphone permission
-                console.log('🎤 Requesting microphone permission...');
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                console.log('✅ Microphone access granted!', stream);
+                // Initialize LiveKit voice handler
+                livekitVoiceHandler = new LiveKitVoiceHandler();
                 
-                statusText.textContent = 'Loading agent and language settings...';
-                console.log('💬 Status updated: Loading agent and language settings...');
-
-                // Get current agent details and language
-                console.log('📡 Fetching agent details...');
-                const agentResponse = await fetch(`/api/agents/${currentAgentId}`, {
-                    headers: getAuthHeader()
-                });
+                statusText.textContent = 'Starting voice conversation...';
                 
-                if (!agentResponse.ok) throw new Error('Failed to get agent details');
-                const agentData = await agentResponse.json();
-                const agent = agentData.agent;
+                // Start voice test with LiveKit
+                const result = await livekitVoiceHandler.startVoiceTest(currentAgentId, scenario);
                 
-                // Initialize language verification
-                const languageDiv = document.getElementById('languageVerification');
-                const detectedLangSpan = document.getElementById('detectedLanguage');
-                const customerLangSpan = document.getElementById('customerLanguage');
-                const suggestedLangSpan = document.getElementById('suggestedLanguage');
+                statusText.textContent = 'Connected! You can now speak naturally.';
                 
-                detectedLangSpan.textContent = 'Waiting for speech...';
-                customerLangSpan.textContent = agent.supported_language?.toUpperCase() || 'EN';
-                languageDiv.style.display = 'block';
-
-                statusText.textContent = 'Creating AI session...';
-
-                // Create voice test session with OpenAI and language verification
-                const response = await fetch('/api/openai-sessions/voice-test', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        agentId: currentAgentId,
-                        scenario: scenario,
-                        languageVerificationEnabled: true,
-                        customerData: {
-                            customer_name: 'Test Customer',
-                            phone: 'voice-test',
-                            language_code: agent.supported_language || 'en',
-                            language_confirmed: false // Always false for testing
-                        }
-                    })
-                });
-
-                if (!response.ok) throw new Error('Failed to create voice test session');
-
-                const result = await response.json();
-                voiceTestSession = result.sessionId;
-
-                statusText.textContent = 'Ready for conversation! Speak naturally - automatic turn-taking enabled.';
-                
-                // Show voice controls with automatic turn-taking
+                // Show voice controls
                 document.getElementById('voiceControls').style.display = 'block';
                 document.getElementById('conversationLog').style.display = 'block';
                 document.getElementById('startVoiceTest').style.display = 'none';
                 document.getElementById('endVoiceTest').style.display = 'inline-block';
 
-                // Setup automatic voice activity detection
-                console.log('🔧 Setting up voice activity detection with stream:', stream);
-                setupVoiceActivityDetection(stream);
-                console.log('✅ Voice activity detection setup completed');
+                // Add welcome message
+                addConversationMessage('Agent', 'Hello! I\'m ready to help you. How can I assist you today?', true);
 
-                // Add welcome message with language verification
-                const welcomeMessage = getLocalizedWelcomeMessage(agent.supported_language || 'en');
-                console.log('💬 Welcome message:', welcomeMessage);
-                addConversationMessage('Agent', welcomeMessage, true);
-
-                // Speak welcome message
-                speakText(welcomeMessage);
-
-                // Setup 30-second inactivity timeout
-                startInactivityTimer();
-
-                // Setup language switch handlers
-                setupLanguageSwitchHandlers();
+                console.log('✅ LiveKit voice test started successfully');
 
             } catch (error) {
-                console.error('Error starting voice test:', error);
+                console.error('❌ Error starting voice test:', error);
                 showAlert('Failed to start voice test: ' + error.message, 'danger');
                 endVoiceTest();
             }
@@ -5498,45 +5474,12 @@
 
         async function endVoiceTest() {
             try {
-                // Stop recording if active
-                if (isRecording && mediaRecorder) {
-                    mediaRecorder.stop();
-                    isRecording = false;
-                }
-
-                // Stop speech synthesis
-                speechSynthesis.cancel();
-
-                // End OpenAI session
-                if (voiceTestSession) {
-                    await fetch(`/api/openai-sessions/${voiceTestSession}`, {
-                        method: 'DELETE'
-                    });
-                }
+                console.log('🏁 Ending LiveKit voice test...');
                 
-                // End new voice test session
-                if (window.currentVoiceTestSession) {
-                    try {
-                        await fetch(`/api/voice-test/end/${window.currentVoiceTestSession.sessionId}`, {
-                            method: 'POST',
-                            headers: getAuthHeader()
-                        });
-                        
-                        // Stop microphone stream
-                        if (window.currentVoiceTestSession.stream) {
-                            window.currentVoiceTestSession.stream.getTracks().forEach(track => track.stop());
-                        }
-                        
-                        window.currentVoiceTestSession = null;
-                    } catch (error) {
-                        console.error('Error ending voice test session:', error);
-                    }
-                }
-                
-                // Stop conversation polling
-                if (window.conversationPolling) {
-                    clearInterval(window.conversationPolling);
-                    window.conversationPolling = null;
+                // End LiveKit session
+                if (livekitVoiceHandler) {
+                    await livekitVoiceHandler.endVoiceTest();
+                    livekitVoiceHandler = null;
                 }
 
                 // Reset UI
@@ -5547,11 +5490,10 @@
                 document.getElementById('endVoiceTest').style.display = 'none';
                 document.getElementById('conversationMessages').innerHTML = '';
 
-                voiceTestSession = null;
-                mediaRecorder = null;
+                console.log('✅ Voice test ended successfully');
 
             } catch (error) {
-                console.error('Error ending voice test:', error);
+                console.error('❌ Error ending voice test:', error);
             }
         }
 

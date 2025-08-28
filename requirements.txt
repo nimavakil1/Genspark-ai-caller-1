@@ -1,0 +1,4 @@
+# LiveKit Agent Dependencies
+livekit-agents[openai,silero,deepgram,cartesia,turn-detector]==1.2.7
+aiohttp>=3.10
+python-dotenv==1.0.0

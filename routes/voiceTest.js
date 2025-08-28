@@ -1,13 +1,13 @@
 const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
-const OpenAIRealtimeService = require('../services/openaiRealtimeService');
 const { query } = require('../src/database');
+const axios = require('axios');
 
 const router = express.Router();
 
-// Create a global OpenAI service instance
-const openaiService = new OpenAIRealtimeService();
+// LiveKit service configuration
+const LIVEKIT_SERVICE_URL = process.env.LIVEKIT_SERVICE_URL || 'http://localhost:3002';
 
 // Storage for active test sessions
 const activeTestSessions = new Map();
@@ -80,20 +80,27 @@ router.post('/start', authenticateToken, asyncHandler(async (req, res) => {
             customer_name: customer_name
         };
         
-        // Create OpenAI Realtime session
-        console.log('📡 Creating OpenAI Realtime session...');
-        const openaiSession = await openaiService.createRealtimeSession(
-            callControlId, 
-            agentData, 
-            customerData
-        );
+        // Create LiveKit session
+        console.log('📡 Creating LiveKit voice session...');
+        const livekitResponse = await axios.post(`${LIVEKIT_SERVICE_URL}/create-session`, {
+            agent_id: agent_id,
+            agent_config: agentData
+        });
         
-        console.log('✅ OpenAI session created:', openaiSession);
+        if (!livekitResponse.data.success) {
+            throw new Error('Failed to create LiveKit session');
+        }
+        
+        const sessionData = livekitResponse.data.session_data;
+        console.log('✅ LiveKit session created:', sessionData);
         
         // Store session info
         activeTestSessions.set(sessionId, {
             sessionId: sessionId,
             callControlId: callControlId,
+            roomName: sessionData.room_name,
+            customerToken: sessionData.customer_token,
+            livekitUrl: sessionData.livekit_url,
             agentData: agentData,
             customerData: customerData,
             startTime: new Date(),
@@ -101,19 +108,18 @@ router.post('/start', authenticateToken, asyncHandler(async (req, res) => {
             conversationHistory: []
         });
         
-        // Set up event listeners for OpenAI responses
-        setupOpenAIEventListeners(sessionId);
-        
         res.json({
             success: true,
             session_id: sessionId,
-            call_control_id: callControlId,
+            room_name: sessionData.room_name,
+            customer_token: sessionData.customer_token,
+            livekit_url: sessionData.livekit_url,
             agent: {
                 id: agent.id,
                 name: agent.name,
                 voice_settings: agentData.voice_settings
             },
-            message: 'Voice test session created successfully'
+            message: 'LiveKit voice session created successfully'
         });
         
     } catch (error) {
@@ -126,16 +132,9 @@ router.post('/start', authenticateToken, asyncHandler(async (req, res) => {
     }
 }));
 
-// Send audio data to OpenAI
-router.post('/audio', authenticateToken, asyncHandler(async (req, res) => {
-    const { session_id, audio_data } = req.body;
-    
-    if (!session_id || !audio_data) {
-        return res.status(400).json({
-            success: false,
-            error: 'Session ID and audio data are required'
-        });
-    }
+// Get session connection info (audio handled directly by LiveKit)
+router.get('/connection/:session_id', authenticateToken, asyncHandler(async (req, res) => {
+    const { session_id } = req.params;
     
     const session = activeTestSessions.get(session_id);
     if (!session) {
@@ -145,33 +144,14 @@ router.post('/audio', authenticateToken, asyncHandler(async (req, res) => {
         });
     }
     
-    try {
-        // Decode base64 audio data
-        const audioBuffer = Buffer.from(audio_data, 'base64');
-        
-        // Send audio to OpenAI
-        const success = openaiService.sendAudioInput(session.callControlId, audioBuffer);
-        
-        if (success) {
-            res.json({
-                success: true,
-                message: 'Audio sent to OpenAI successfully'
-            });
-        } else {
-            res.status(500).json({
-                success: false,
-                error: 'Failed to send audio to OpenAI'
-            });
+    res.json({
+        success: true,
+        connection: {
+            room_name: session.roomName,
+            customer_token: session.customerToken,
+            livekit_url: session.livekitUrl
         }
-        
-    } catch (error) {
-        console.error('❌ Error processing audio data:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to process audio data',
-            details: error.message
-        });
-    }
+    });
 }));
 
 // Get session status and conversation history
@@ -186,8 +166,9 @@ router.get('/session/:session_id', authenticateToken, asyncHandler(async (req, r
         });
     }
     
-    // Get conversation history from OpenAI service
-    const conversationHistory = openaiService.getConversationHistory(session.callControlId);
+    // For now, return stored conversation history
+    // In production, this would come from LiveKit room events
+    const conversationHistory = session.conversationHistory;
     
     res.json({
         success: true,
@@ -218,8 +199,10 @@ router.post('/end/:session_id', authenticateToken, asyncHandler(async (req, res)
     try {
         console.log(`🏁 Ending voice test session: ${session_id}`);
         
-        // End OpenAI session
-        await openaiService.endSession(session.callControlId);
+        // End LiveKit room
+        await axios.post(`${LIVEKIT_SERVICE_URL}/end-session`, {
+            room_name: session.roomName
+        });
         
         // Remove from active sessions
         activeTestSessions.delete(session_id);
@@ -239,56 +222,31 @@ router.post('/end/:session_id', authenticateToken, asyncHandler(async (req, res)
     }
 }));
 
-// Set up OpenAI event listeners for a session
-function setupOpenAIEventListeners(sessionId) {
-    const session = activeTestSessions.get(sessionId);
-    if (!session) return;
+// Add conversation message to session history
+router.post('/conversation/:session_id', authenticateToken, asyncHandler(async (req, res) => {
+    const { session_id } = req.params;
+    const { type, content } = req.body;
     
-    // Listen for customer transcripts
-    openaiService.on('customerTranscript', (data) => {
-        if (data.callControlId === session.callControlId) {
-            console.log(`📝 Customer said: "${data.transcript}"`);
-            session.conversationHistory.push({
-                type: 'customer',
-                content: data.transcript,
-                timestamp: new Date()
-            });
-        }
+    const session = activeTestSessions.get(session_id);
+    if (!session) {
+        return res.status(404).json({
+            success: false,
+            error: 'Session not found'
+        });
+    }
+    
+    // Add message to conversation history
+    session.conversationHistory.push({
+        type: type,
+        content: content,
+        timestamp: new Date()
     });
     
-    // Listen for assistant text responses
-    openaiService.on('textResponse', (data) => {
-        if (data.callControlId === session.callControlId) {
-            console.log(`🤖 Assistant responded: "${data.textDelta}"`);
-            session.conversationHistory.push({
-                type: 'assistant',
-                content: data.textDelta,
-                timestamp: new Date()
-            });
-        }
+    res.json({
+        success: true,
+        message: 'Message added to conversation'
     });
-    
-    // Listen for speech detection
-    openaiService.on('customerSpeechStarted', (data) => {
-        if (data.callControlId === session.callControlId) {
-            console.log(`🎤 Customer started speaking in session: ${sessionId}`);
-        }
-    });
-    
-    openaiService.on('customerSpeechStopped', (data) => {
-        if (data.callControlId === session.callControlId) {
-            console.log(`🔇 Customer stopped speaking in session: ${sessionId}`);
-        }
-    });
-    
-    // Listen for errors
-    openaiService.on('error', (data) => {
-        if (data.callControlId === session.callControlId) {
-            console.error(`❌ OpenAI error in session ${sessionId}:`, data.error);
-            session.status = 'error';
-        }
-    });
-}
+}));
 
 // Get all active test sessions (for debugging)
 router.get('/sessions', authenticateToken, asyncHandler(async (req, res) => {
