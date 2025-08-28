@@ -1,0 +1,12 @@
+{
+  "name": "ai-sales-system",
+  "version": "1.1.0",
+  "description": "AI-powered sales system for receipt rolls with phone integration",
+  "buildDate": "2025-08-28T12:34:37.666Z",
+  "nodeVersion": "v20.19.4",
+  "git": {
+    "branch": "main",
+    "commit": "f0ae02c",
+    "tag": "none"
+  }
+}

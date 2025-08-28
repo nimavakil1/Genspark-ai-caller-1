@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="cache-killer" content="<%= new Date().getTime() %>">
     <title><%= title || 'AI Sales Dashboard' %></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -3469,8 +3473,25 @@
                             startVoiceTestBtn.onclick = function(e) {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                console.log('Green Start Voice Test button clicked');
-                                startVoiceTest();
+                                console.log('🚀 VOICE TEST V2.0 - Updated JavaScript loaded successfully!');
+                                console.log('⏰ Cache timestamp:', new Date().toISOString());
+                                
+                                // Test microphone access
+                                console.log('🎤 Testing microphone access...');
+                                showAlert('Starting microphone test...', 'info');
+                                
+                                // Get the actual agent ID from the form
+                                const actualAgentId = document.getElementById('testAgentId').value;
+                                console.log('🎯 Using agent ID:', actualAgentId);
+                                
+                                // Start real voice conversation test
+                                startRealVoiceConversation(actualAgentId)
+                                    .catch(function(error) {
+                                        console.error('❌ Microphone access failed:', error);
+                                        showAlert('Microphone access failed: ' + error.message, 'danger');
+                                    });
+                                
+                                return false;
                             };
                         }
                         
@@ -4696,24 +4717,233 @@
             }
         }
 
+        // New Real Voice Conversation Test Function
+        async function startRealVoiceConversation(agentId) {
+            console.log('🚀 Starting real voice conversation with agent:', agentId);
+            showAlert('Initializing voice conversation...', 'info');
+            
+            try {
+                // Get microphone access
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+                
+                console.log('✅ Microphone access granted');
+                showAlert('Microphone connected - creating OpenAI session...', 'info');
+                
+                // Create OpenAI session
+                const sessionResponse = await fetch('/api/voice-test/start', {
+                    method: 'POST',
+                    headers: {
+                        ...getAuthHeader(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        agent_id: agentId,
+                        customer_name: 'Test User',
+                        test_mode: true
+                    })
+                });
+                
+                if (!sessionResponse.ok) {
+                    throw new Error('Failed to create OpenAI session');
+                }
+                
+                const sessionData = await sessionResponse.json();
+                console.log('✅ OpenAI session created:', sessionData);
+                
+                window.currentVoiceTestSession = {
+                    sessionId: sessionData.session_id,
+                    callControlId: sessionData.call_control_id,
+                    stream: stream
+                };
+                
+                showAlert('🎤 Voice conversation started! Speak now...', 'success');
+                
+                // Set up audio processing
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 16000
+                });
+                const source = audioContext.createMediaStreamSource(stream);
+                
+                // Create audio processor worklet or script processor
+                try {
+                    await audioContext.audioWorklet.addModule('/js/audio-processor.js');
+                    const processor = new AudioWorkletNode(audioContext, 'audio-processor');
+                    
+                    processor.port.onmessage = function(event) {
+                        if (event.data.type === 'audio') {
+                            sendAudioToOpenAI(event.data.audioBuffer);
+                        }
+                    };
+                    
+                    source.connect(processor);
+                } catch (error) {
+                    console.warn('AudioWorklet not available, using ScriptProcessor');
+                    
+                    // Fallback to ScriptProcessor
+                    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+                    processor.onaudioprocess = function(event) {
+                        const inputBuffer = event.inputBuffer.getChannelData(0);
+                        const audioData = new Float32Array(inputBuffer);
+                        sendAudioToOpenAI(audioData);
+                    };
+                    
+                    source.connect(processor);
+                    processor.connect(audioContext.destination);
+                }
+                
+                // Set up conversation display
+                updateConversationDisplay('System', 'Voice conversation started. Speak to interact with the AI agent.');
+                
+                // Start polling for conversation updates
+                window.conversationPolling = setInterval(function() {
+                    pollConversationUpdates(sessionData.session_id);
+                }, 2000); // Poll every 2 seconds
+                
+            } catch (error) {
+                console.error('❌ Error starting voice conversation:', error);
+                showAlert('Failed to start voice conversation: ' + error.message, 'danger');
+                throw error;
+            }
+        }
+        
+        // Poll for conversation updates
+        let lastConversationLength = 0;
+        function pollConversationUpdates(sessionId) {
+            if (!sessionId) return;
+            
+            fetch(`/api/voice-test/session/${sessionId}`, {
+                headers: getAuthHeader()
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.session.conversation_history) {
+                    const history = data.session.conversation_history;
+                    
+                    // Only process new messages
+                    if (history.length > lastConversationLength) {
+                        const newMessages = history.slice(lastConversationLength);
+                        
+                        newMessages.forEach(message => {
+                            if (message.type === 'customer_message' || message.role === 'user') {
+                                updateConversationDisplay('User', message.content);
+                            } else if (message.type === 'assistant_response' || message.role === 'assistant') {
+                                updateConversationDisplay('Agent', message.content);
+                            }
+                        });
+                        
+                        lastConversationLength = history.length;
+                    }
+                }
+            })
+            .catch(error => {
+                console.warn('Error polling conversation updates:', error);
+            });
+        }
+
+        // Update conversation display
+        function updateConversationDisplay(speaker, message) {
+            const conversationLog = document.getElementById('conversationLog');
+            const conversationMessages = document.getElementById('conversationMessages');
+            
+            if (!conversationLog || !conversationMessages) {
+                console.warn('Conversation display elements not found');
+                return;
+            }
+            
+            // Show conversation log if hidden
+            conversationLog.style.display = 'block';
+            
+            // Create message element
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'mb-2';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const speakerColor = speaker === 'System' ? 'text-info' : 
+                                speaker === 'User' ? 'text-primary' : 'text-success';
+            
+            messageDiv.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <strong class="${speakerColor}">${speaker}:</strong>
+                    <small class="text-muted">${timestamp}</small>
+                </div>
+                <div class="mt-1">${message}</div>
+            `;
+            
+            // Add to conversation
+            conversationMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            conversationMessages.scrollTop = conversationMessages.scrollHeight;
+        }
+
+        // Send audio data to OpenAI
+        function sendAudioToOpenAI(audioBuffer) {
+            if (!window.currentVoiceTestSession) return;
+            
+            try {
+                // Convert Float32Array to PCM16
+                const pcm16Buffer = new Int16Array(audioBuffer.length);
+                for (let i = 0; i < audioBuffer.length; i++) {
+                    const s = Math.max(-1, Math.min(1, audioBuffer[i]));
+                    pcm16Buffer[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                
+                // Convert to base64
+                const bytes = new Uint8Array(pcm16Buffer.buffer);
+                const base64Audio = btoa(String.fromCharCode.apply(null, bytes));
+                
+                // Send to backend
+                fetch('/api/voice-test/audio', {
+                    method: 'POST',
+                    headers: {
+                        ...getAuthHeader(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        session_id: window.currentVoiceTestSession.sessionId,
+                        audio_data: base64Audio
+                    })
+                }).catch(error => {
+                    console.warn('Audio send failed:', error);
+                });
+                
+            } catch (error) {
+                console.error('Error processing audio:', error);
+            }
+        }
+
         // Voice Test Functions with Language Verification
         async function startVoiceTest() {
+            console.log('🚀 startVoiceTest() function called');
             try {
                 currentAgentId = document.getElementById('testAgentId').value;
                 const scenario = document.getElementById('voiceTestScenario').value;
+                console.log('📝 Agent ID:', currentAgentId, 'Scenario:', scenario);
 
                 // Show status
                 const statusDiv = document.getElementById('voiceTestStatus');
                 const statusText = document.getElementById('voiceStatusText');
                 statusDiv.style.display = 'block';
                 statusText.textContent = 'Requesting microphone access...';
+                console.log('💬 Status updated: Requesting microphone access...');
 
                 // Request microphone permission
+                console.log('🎤 Requesting microphone permission...');
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('✅ Microphone access granted!', stream);
                 
                 statusText.textContent = 'Loading agent and language settings...';
+                console.log('💬 Status updated: Loading agent and language settings...');
 
                 // Get current agent details and language
+                console.log('📡 Fetching agent details...');
                 const agentResponse = await fetch(`/api/agents/${currentAgentId}`, {
                     headers: getAuthHeader()
                 });
@@ -4767,10 +4997,13 @@
                 document.getElementById('endVoiceTest').style.display = 'inline-block';
 
                 // Setup automatic voice activity detection
+                console.log('🔧 Setting up voice activity detection with stream:', stream);
                 setupVoiceActivityDetection(stream);
+                console.log('✅ Voice activity detection setup completed');
 
                 // Add welcome message with language verification
                 const welcomeMessage = getLocalizedWelcomeMessage(agent.supported_language || 'en');
+                console.log('💬 Welcome message:', welcomeMessage);
                 addConversationMessage('Agent', welcomeMessage, true);
 
                 // Speak welcome message
@@ -4811,16 +5044,30 @@
         let currentCustomerLanguage = null;
 
         function setupVoiceActivityDetection(stream) {
-            // Create audio context for voice activity detection
-            voiceActivityContext = new (window.AudioContext || window.webkitAudioContext)();
-            const source = voiceActivityContext.createMediaStreamSource(stream);
-            voiceActivityAnalyser = voiceActivityContext.createAnalyser();
-            
-            voiceActivityAnalyser.fftSize = 256;
-            source.connect(voiceActivityAnalyser);
+            console.log('🎤 Setting up voice activity detection...');
+            try {
+                // Create audio context for voice activity detection
+                voiceActivityContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Resume audio context if suspended
+                if (voiceActivityContext.state === 'suspended') {
+                    console.log('🔄 Resuming suspended audio context...');
+                    voiceActivityContext.resume();
+                }
+                
+                console.log('🎧 Audio context state:', voiceActivityContext.state);
+                
+                const source = voiceActivityContext.createMediaStreamSource(stream);
+                voiceActivityAnalyser = voiceActivityContext.createAnalyser();
+                
+                voiceActivityAnalyser.fftSize = 256;
+                source.connect(voiceActivityAnalyser);
+                
+                console.log('✅ Voice activity detection setup complete');
 
-            // Setup media recorder for continuous recording
-            mediaRecorder = new MediaRecorder(stream);
+                // Setup media recorder for continuous recording
+                mediaRecorder = new MediaRecorder(stream);
+                console.log('📹 MediaRecorder created');
             audioChunks = [];
 
             mediaRecorder.ondataavailable = (event) => {
@@ -4838,13 +5085,20 @@
             
             // Update turn status
             updateTurnStatus('listening');
+            
+            } catch (error) {
+                console.error('❌ Error setting up voice activity detection:', error);
+                showAlert('Voice detection setup failed: ' + error.message, 'danger');
+            }
         }
 
         function startVoiceActivityMonitoring() {
+            console.log('🎧 Starting voice activity monitoring...');
             const bufferLength = voiceActivityAnalyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
             let isSpeaking = false;
             let speechStartTime = null;
+            let debugCounter = 0;
             
             function monitor() {
                 if (!voiceActivityAnalyser) return;
@@ -4853,10 +5107,17 @@
                 
                 // Calculate average volume
                 const average = dataArray.reduce((acc, val) => acc + val, 0) / bufferLength;
-                const threshold = 30; // Voice activity threshold
+                const threshold = 20; // Lower threshold for better sensitivity
+                
+                // Debug logging every 100 iterations (roughly every 2 seconds)
+                debugCounter++;
+                if (debugCounter % 100 === 0) {
+                    console.log('🔊 Audio level:', average, 'Threshold:', threshold, 'Speaking:', isSpeaking);
+                }
 
                 if (average > threshold && !isSpeaking) {
                     // Speech started
+                    console.log('🗣️ Speech detected! Audio level:', average);
                     isSpeaking = true;
                     speechStartTime = Date.now();
                     startRecordingSegment();
@@ -5251,6 +5512,31 @@
                     await fetch(`/api/openai-sessions/${voiceTestSession}`, {
                         method: 'DELETE'
                     });
+                }
+                
+                // End new voice test session
+                if (window.currentVoiceTestSession) {
+                    try {
+                        await fetch(`/api/voice-test/end/${window.currentVoiceTestSession.sessionId}`, {
+                            method: 'POST',
+                            headers: getAuthHeader()
+                        });
+                        
+                        // Stop microphone stream
+                        if (window.currentVoiceTestSession.stream) {
+                            window.currentVoiceTestSession.stream.getTracks().forEach(track => track.stop());
+                        }
+                        
+                        window.currentVoiceTestSession = null;
+                    } catch (error) {
+                        console.error('Error ending voice test session:', error);
+                    }
+                }
+                
+                // Stop conversation polling
+                if (window.conversationPolling) {
+                    clearInterval(window.conversationPolling);
+                    window.conversationPolling = null;
                 }
 
                 // Reset UI

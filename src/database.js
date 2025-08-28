@@ -305,6 +305,21 @@ const initializeDatabase = async () => {
       )
     `);
 
+    // Create agents table first (referenced by call_logs)
+    await query(`
+      CREATE TABLE IF NOT EXISTS agents (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        system_prompt TEXT,
+        voice_settings JSONB DEFAULT '{}',
+        language VARCHAR(10) DEFAULT 'en',
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Create call_logs table
     await query(`
       CREATE TABLE IF NOT EXISTS call_logs (
@@ -393,20 +408,6 @@ const initializeDatabase = async () => {
         is_active BOOLEAN DEFAULT true,
         last_login TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Create agents table (for AI agent management)
-    await query(`
-      CREATE TABLE IF NOT EXISTS agents (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        system_prompt TEXT,
-        voice_settings JSONB DEFAULT '{}',
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 

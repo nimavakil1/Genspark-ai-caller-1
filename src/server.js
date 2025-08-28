@@ -29,6 +29,7 @@ const telnyxVoiceRoutes = require('../routes/telnyxVoiceAPI');
 const callControlRoutes = require('../routes/callControlAPI');
 const agentRoutes = require('../routes/agents');
 const openaiSessionsRoutes = require('../routes/openai-sessions');
+const voiceTestRoutes = require('../routes/voiceTest');
 
 const app = express();
 const server = http.createServer(app);
@@ -145,6 +146,8 @@ app.use('/api/call-control', callControlRoutes);
 app.use('/api/agents', agentRoutes);
 app.use('/api/openai-sessions', openaiSessionsRoutes);
 
+app.use('/api/voice-test', voiceTestRoutes);
+
 // Initialize language verification service
 const languageService = new LanguageVerificationService();
 
@@ -243,11 +246,43 @@ app.get('/login', (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
+  const packageJson = require('../package.json');
   res.json({ 
     status: 'OK', 
+    version: packageJson.version,
+    name: packageJson.name,
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    node_version: process.version
   });
+});
+
+// Version info endpoint
+app.get('/api/version', (req, res) => {
+  const packageJson = require('../package.json');
+  const fs = require('fs');
+  const path = require('path');
+  
+  let versionInfo = {
+    name: packageJson.name,
+    version: packageJson.version,
+    description: packageJson.description,
+    node_version: process.version,
+    uptime: process.uptime()
+  };
+  
+  // Try to load detailed version info if available
+  try {
+    const versionPath = path.join(__dirname, '..', 'version.json');
+    if (fs.existsSync(versionPath)) {
+      const detailedVersion = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
+      versionInfo = { ...versionInfo, ...detailedVersion };
+    }
+  } catch (error) {
+    // Ignore if version.json doesn't exist
+  }
+  
+  res.json(versionInfo);
 });
 
 // Socket.IO connection handling

@@ -1,6 +1,6 @@
 {
   "name": "ai-sales-system",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "AI-powered sales system for receipt rolls with phone integration",
   "main": "src/server.js",
   "scripts": {
@@ -13,7 +13,12 @@
     "db:seed": "node scripts/seed.js",
     "telnyx:start": "node telnyxVoiceIntegration.js",
     "telnyx:test": "node test-telnyx.js",
-    "telnyx:health": "curl http://localhost:3000/api/telnyx-voice/health"
+    "telnyx:health": "curl http://localhost:3000/api/telnyx-voice/health",
+    "version:patch": "npm version patch",
+    "version:minor": "npm version minor",
+    "version:major": "npm version major",
+    "version:info": "node scripts/version-info.js",
+    "release": "node scripts/release.js"
   },
   "keywords": [
     "ai",
@@ -46,7 +51,7 @@
     "socket.io": "^4.6.1"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "nodemon": "^3.1.10"
   },
   "engines": {
     "node": ">=18.0.0"
