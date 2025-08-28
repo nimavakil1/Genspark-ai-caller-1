@@ -71,8 +71,14 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
 
-// Static files
-app.use(express.static(path.join(__dirname, '../public')));
+// Static files with proper MIME types
+app.use(express.static(path.join(__dirname, '../public'), {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    }
+  }
+}));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Public CSV template routes (no authentication)
