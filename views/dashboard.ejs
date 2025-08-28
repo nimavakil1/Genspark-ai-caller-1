@@ -3488,11 +3488,12 @@
                                 const actualAgentId = document.getElementById('testAgentId').value;
                                 console.log('🎯 Using agent ID:', actualAgentId);
                                 
-                                // Start real voice conversation test
-                                startRealVoiceConversation(actualAgentId)
+                                // Start LiveKit voice conversation test
+                                currentAgentId = actualAgentId;
+                                startVoiceTest()
                                     .catch(function(error) {
-                                        console.error('❌ Microphone access failed:', error);
-                                        showAlert('Microphone access failed: ' + error.message, 'danger');
+                                        console.error('❌ Voice test failed:', error);
+                                        showAlert('Voice test failed: ' + error.message, 'danger');
                                     });
                                 
                                 return false;
@@ -4718,7 +4719,8 @@
         }
 
         // New Real Voice Conversation Test Function
-        async function startRealVoiceConversation(agentId) {
+        // DEPRECATED: Old audio processing function - replaced with LiveKit integration
+        async function startRealVoiceConversation_DISABLED(agentId) {
             console.log('🚀 Starting real voice conversation with agent:', agentId);
             showAlert('Initializing voice conversation...', 'info');
             

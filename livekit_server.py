@@ -141,7 +141,8 @@ def create_app():
     """Create the aiohttp application"""
     app = web.Application()
     
-    # Add CORS headers
+    # Add CORS headers middleware
+    @web.middleware
     async def add_cors_headers(request, handler):
         response = await handler(request)
         response.headers['Access-Control-Allow-Origin'] = '*'
@@ -161,7 +162,12 @@ def create_app():
             }
         )
     
+    # Handle GET requests to root with simple response
+    async def root_handler(request):
+        return web.json_response({"status": "LiveKit Service Running", "version": "1.0.0"})
+    
     app.router.add_route('OPTIONS', '/{path:.*}', options_handler)
+    app.router.add_get('/', root_handler)
     
     # API routes
     app.router.add_post('/create-session', create_voice_session)
@@ -172,4 +178,4 @@ def create_app():
 
 if __name__ == "__main__":
     app = create_app()
-    web.run_app(app, host='0.0.0.0', port=3002)
+    web.run_app(app, host='0.0.0.0', port=3004)

@@ -3,68 +3,50 @@
 import asyncio
 import logging
 import os
-from typing import Annotated
 
-from livekit.agents import (
-    AutoSubscribe,
-    JobContext,
-    WorkerOptions,
-    cli,
-    llm
-)
-from livekit.agents.multimodal import MultimodalAgent
+from livekit import agents
+from livekit.agents import JobContext, WorkerOptions, cli, Agent
 from livekit.plugins import openai, silero
-import livekit
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ai-sales-agent")
 
 def prewarm(proc: JobContext):
     """Prewarm the agent by loading models"""
-    logger.info("Prewarming agent...")
-    proc.wait_for_participant = True
+    logger.info("Prewarming AI sales agent...")
 
 async def entrypoint(ctx: JobContext):
     """Main entrypoint for the LiveKit agent"""
+    logger.info("Starting AI sales agent session...")
     
-    # Wait for participant to connect
-    await ctx.wait_for_participant()
-    logger.info(f"Participant connected: {ctx.room.remote_participants}")
-    
-    # Get participant
-    participant = ctx.room.remote_participants[0] if ctx.room.remote_participants else None
-    if not participant:
-        logger.error("No participant found")
-        return
-    
-    # Create OpenAI Realtime model with voice settings
-    model = openai.realtime.RealtimeModel(
-        voice="alloy",
-        temperature=0.7,
+    # Create the agent with instructions
+    agent = Agent(
         instructions="""You are a helpful AI sales assistant for a receipt roll sales company. 
         You can help customers with product information, pricing, and orders.
         Be friendly, professional, and concise in your responses.
-        If you don't know something, say so clearly.""",
-        modalities=["audio", "text"],
-        turn_detection=openai.realtime.ServerVadOptions(
-            threshold=0.5,
-            prefix_padding_ms=300,
-            silence_duration_ms=500
-        ),
+        If you don't know something, say so clearly."""
     )
     
-    # Create the multimodal agent
-    agent = MultimodalAgent(
-        model=model,
+    # Create agent session with all components
+    session = agents.AgentSession(
+        stt=openai.STT(model="whisper-1"),
+        llm=openai.LLM(model="gpt-4o-mini"),
+        tts=openai.TTS(voice="alloy"),
         vad=silero.VAD.load(),
     )
     
-    # Start the agent
-    logger.info("Starting AI sales agent...")
-    await agent.start(ctx.room, participant)
+    # Start the session
+    await session.start(
+        room=ctx.room,
+        agent=agent,
+    )
     
-    # Keep the agent running
-    await agent.aclose()
+    # Generate initial greeting
+    await session.generate_reply(
+        instructions="Greet the user as a helpful AI sales assistant and offer your assistance with receipt roll sales."
+    )
+    
+    logger.info("AI sales agent session started successfully")
 
 if __name__ == "__main__":
     # Set up environment variables
