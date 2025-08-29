@@ -22,11 +22,11 @@ async def entrypoint(ctx: JobContext):
     # Create the agent with optimized instructions for fast responses
     agent = Agent(
         instructions="""You are a helpful AI sales assistant. 
-        IMPORTANT: Keep responses SHORT and CONCISE (1-2 sentences max).
-        Be friendly but brief. Answer questions quickly.
-        For "Can you hear me?" just say "Yes, perfectly!"
-        For greetings, say "Hi! How can I help with receipt rolls today?"
-        Always respond fast with minimal words while being helpful."""
+        CRITICAL: Keep ALL responses under 20 words. Never exceed this limit.
+        Be friendly but extremely brief. Answer questions with minimal words.
+        For "Can you hear me?" say "Yes, perfectly!"
+        For greetings say "Hi! How can I help today?"
+        Always respond with maximum 1-2 short sentences."""
     )
     
     # Create agent session with optimized components for low latency
@@ -42,7 +42,6 @@ async def entrypoint(ctx: JobContext):
         llm=openai.LLM(
             model="gpt-4o-mini", 
             temperature=0.7,
-            max_tokens=150,  # Limit response length for speed
         ),
         # Use streaming TTS for faster audio generation
         tts=openai.TTS(
