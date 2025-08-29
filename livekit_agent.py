@@ -19,45 +19,77 @@ async def entrypoint(ctx: JobContext):
     """Main entrypoint for the LiveKit agent"""
     logger.info("Starting AI sales agent session...")
     
-    # Create the agent with instructions for interactive conversation
+    # Create the agent with optimized instructions for fast responses
     agent = Agent(
-        instructions="""You are a helpful AI sales assistant for a receipt roll sales company. 
-        You can help customers with product information, pricing, and orders.
-        Be friendly, professional, and respond to ALL user messages.
-        When users speak to you, always respond conversationally.
-        If they ask "Can you hear me?", respond "Yes, I can hear you perfectly!"
-        Engage in natural conversation and answer all questions."""
+        instructions="""You are a helpful AI sales assistant. 
+        IMPORTANT: Keep responses SHORT and CONCISE (1-2 sentences max).
+        Be friendly but brief. Answer questions quickly.
+        For "Can you hear me?" just say "Yes, perfectly!"
+        For greetings, say "Hi! How can I help with receipt rolls today?"
+        Always respond fast with minimal words while being helpful."""
     )
     
-    # Create agent session with all components
+    # Create agent session with optimized components for low latency
     session = agents.AgentSession(
-        stt=openai.STT(model="whisper-1"),
-        llm=openai.LLM(model="gpt-4o-mini"),
-        tts=openai.TTS(voice="alloy"),
-        vad=silero.VAD.load(),
+        # Use streaming STT for faster transcription
+        stt=openai.STT(
+            model="whisper-1",
+            # Enable streaming and reduce latency
+            language="en",
+            detect_language=False,  # Skip language detection for speed
+        ),
+        # Use faster LLM model and streaming
+        llm=openai.LLM(
+            model="gpt-4o-mini", 
+            temperature=0.7,
+            max_tokens=150,  # Limit response length for speed
+        ),
+        # Use streaming TTS for faster audio generation
+        tts=openai.TTS(
+            voice="alloy",
+            speed=1.1,  # Slightly faster speech
+            model="tts-1",  # Use faster TTS model
+        ),
+        # Optimize VAD for faster detection
+        vad=silero.VAD.load(
+            min_speech_duration_ms=100,  # Detect speech faster
+            min_silence_duration_ms=500,  # Shorter silence before processing
+        ),
     )
     
-    # Start the session
+    # Start the session with streaming enabled for low latency
     await session.start(
         room=ctx.room,
         agent=agent,
+        # Enable streaming for real-time responses
+        auto_disconnect=False,
+        auto_publish=True,
     )
     
-    # Generate initial greeting
+    # Generate short initial greeting
     await session.generate_reply(
-        instructions="Greet the user as a helpful AI sales assistant and offer your assistance with receipt roll sales."
+        instructions="Say a quick friendly greeting in 5 words or less to a customer."
     )
     
-    # Add event handler for user speech to ensure responses
+    # Add event handler for user speech to ensure responses with timing
     @session.on("user_speech_committed")
     async def on_user_speech(event):
-        user_message = event.alternatives[0].text
-        logger.info(f"User speech received: {user_message}")
+        import time
+        start_time = time.time()
         
-        # Generate contextual response
+        user_message = event.alternatives[0].text
+        logger.info(f"⚡ User speech received: '{user_message}' at {start_time}")
+        
+        # Generate short contextual response
+        response_start = time.time()
         await session.generate_reply(
-            instructions=f"The user just said: '{user_message}'. Respond helpfully and conversationally as a sales assistant."
+            instructions=f"User said: '{user_message}'. Reply in 1-2 short sentences. Be brief and helpful."
         )
+        
+        end_time = time.time()
+        total_latency = end_time - start_time
+        response_latency = end_time - response_start
+        logger.info(f"⏱️  Total latency: {total_latency:.2f}s, Response generation: {response_latency:.2f}s")
     
     logger.info("AI sales agent session started successfully")
 
