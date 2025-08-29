@@ -9,7 +9,7 @@ rtc:
   use_external_ip: false
 
 keys:
-  devkey: devkey-secret-that-is-long-enough-for-livekit-requirements-32plus-chars
+  stable_key_2024: stable_secret_that_is_long_enough_for_livekit_requirements_32chars
 
 logging:
   level: info
