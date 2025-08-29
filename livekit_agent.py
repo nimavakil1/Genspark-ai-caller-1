@@ -51,7 +51,7 @@ async def entrypoint(ctx: JobContext):
 if __name__ == "__main__":
     # Set up environment variables
     if not os.getenv("LIVEKIT_URL"):
-        os.environ["LIVEKIT_URL"] = "ws://localhost:7880"
+        os.environ["LIVEKIT_URL"] = "ws://localhost:7881"
     if not os.getenv("LIVEKIT_API_KEY"):
         os.environ["LIVEKIT_API_KEY"] = "devkey"  
     if not os.getenv("LIVEKIT_API_SECRET"):

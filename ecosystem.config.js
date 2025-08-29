@@ -54,7 +54,7 @@ module.exports = {
       env: {
         PATH: '/home/ubuntu/Genspark-ai-caller-1/livekit-env/bin:' + process.env.PATH,
         VIRTUAL_ENV: '/home/ubuntu/Genspark-ai-caller-1/livekit-env',
-        LIVEKIT_URL: 'ws://localhost:7880',
+        LIVEKIT_URL: 'ws://localhost:7881',
         LIVEKIT_API_KEY: 'stable_key_2024',
         LIVEKIT_API_SECRET: 'stable_secret_that_is_long_enough_for_livekit_requirements_32chars',
         OPENAI_API_KEY: process.env.OPENAI_API_KEY || 'your_openai_api_key_here'
@@ -79,7 +79,7 @@ module.exports = {
       env: {
         PATH: '/home/ubuntu/Genspark-ai-caller-1/livekit-env/bin:' + process.env.PATH,
         VIRTUAL_ENV: '/home/ubuntu/Genspark-ai-caller-1/livekit-env',
-        LIVEKIT_URL: 'ws://localhost:7880',
+        LIVEKIT_URL: 'ws://localhost:7881',
         LIVEKIT_API_KEY: 'stable_key_2024',
         LIVEKIT_API_SECRET: 'stable_secret_that_is_long_enough_for_livekit_requirements_32chars',
         OPENAI_API_KEY: process.env.OPENAI_API_KEY || 'your_openai_api_key_here'
