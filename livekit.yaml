@@ -1,9 +1,9 @@
-port: 7881
+port: 8881
 bind_addresses:
   - ""
 
 rtc:
-  tcp_port: 7881
+  tcp_port: 8882
   port_range_start: 50000
   port_range_end: 60000
   use_external_ip: false

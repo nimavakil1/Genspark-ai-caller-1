@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("livekit-server")
 
 # LiveKit configuration
-LIVEKIT_URL = os.getenv("LIVEKIT_URL", "ws://localhost:7881")
+LIVEKIT_URL = os.getenv("LIVEKIT_URL", "ws://localhost:8881")
 LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "devkey")
 LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "devkey-secret-that-is-long-enough-for-livekit-requirements-32plus-chars")
 
