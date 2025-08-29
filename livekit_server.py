@@ -56,7 +56,7 @@ class LiveKitService:
             return {
                 "room_name": room.name,
                 "customer_token": customer_token,
-                "livekit_url": LIVEKIT_URL.replace("ws://localhost", "wss://ai.acropaq.com").replace("ws://", "wss://").replace("wss://", "https://")
+                "livekit_url": "wss://ai.acropaq.com"
             }
             
         except Exception as e:
