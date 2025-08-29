@@ -19,14 +19,6 @@ async def entrypoint(ctx: JobContext):
     """Main entrypoint for the LiveKit agent"""
     logger.info("Starting AI sales agent session...")
     
-    # Create the agent with instructions
-    agent = Agent(
-        instructions="""You are a helpful AI sales assistant for a receipt roll sales company. 
-        You can help customers with product information, pricing, and orders.
-        Be friendly, professional, and concise in your responses.
-        If you don't know something, say so clearly."""
-    )
-    
     # Create agent session with all components
     session = agents.AgentSession(
         stt=openai.STT(model="whisper-1"),
@@ -35,15 +27,14 @@ async def entrypoint(ctx: JobContext):
         vad=silero.VAD.load(),
     )
     
-    # Start the session
+    # Start the session with the room and system instructions
     await session.start(
         room=ctx.room,
-        agent=agent,
-    )
-    
-    # Generate initial greeting
-    await session.generate_reply(
-        instructions="Greet the user as a helpful AI sales assistant and offer your assistance with receipt roll sales."
+        instructions="""You are a helpful AI sales assistant for a receipt roll sales company. 
+        You can help customers with product information, pricing, and orders.
+        Be friendly, professional, and respond to all user questions.
+        Always acknowledge when users speak to you and provide helpful responses.
+        If you don't know something, say so clearly."""
     )
     
     logger.info("AI sales agent session started successfully")
