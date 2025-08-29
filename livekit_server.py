@@ -56,7 +56,7 @@ class LiveKitService:
             return {
                 "room_name": room.name,
                 "customer_token": customer_token,
-                "livekit_url": LIVEKIT_URL.replace("ws://", "http://").replace("wss://", "https://")
+                "livekit_url": LIVEKIT_URL.replace("ws://localhost", "ws://51.195.41.57").replace("ws://", "http://").replace("wss://", "https://")
             }
             
         except Exception as e:
