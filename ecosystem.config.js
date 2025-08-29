@@ -21,6 +21,25 @@ module.exports = {
       time: true
     },
     {
+      name: 'livekit-binary-server',
+      script: 'livekit-server',
+      args: '--config livekit.yaml',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '512M',
+      restart_delay: 5000,
+      max_restarts: 5,
+      min_uptime: '15s',
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: './logs/livekit-binary-server-error.log',
+      out_file: './logs/livekit-binary-server-out.log',
+      log_file: './logs/livekit-binary-server-combined.log',
+      time: true
+    },
+    {
       name: 'livekit-server',
       script: 'python3',
       args: 'livekit_server.py',
