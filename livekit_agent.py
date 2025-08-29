@@ -48,6 +48,17 @@ async def entrypoint(ctx: JobContext):
         instructions="Greet the user as a helpful AI sales assistant and offer your assistance with receipt roll sales."
     )
     
+    # Add event handler for user speech to ensure responses
+    @session.on("user_speech_committed")
+    async def on_user_speech(event):
+        user_message = event.alternatives[0].text
+        logger.info(f"User speech received: {user_message}")
+        
+        # Generate contextual response
+        await session.generate_reply(
+            instructions=f"The user just said: '{user_message}'. Respond helpfully and conversationally as a sales assistant."
+        )
+    
     logger.info("AI sales agent session started successfully")
 
 if __name__ == "__main__":
